@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Recorded Deaths{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+{% block content %}
+  <h1>Recorded Deaths</h1>
+  <table class="table table-striped">
+  <thead>
+  <tr>
+    <th>id</th>
+    <th>date</th>
+    <th>type</th>
+  </tr>
+  </thead>
+  <tbody>
+  {% for death in deaths %}
+    <tr>
+    <td>{{ death.person_id }}</td>
+    <td>{{ death.death_date }}</td>
+    <td>{{ death.death_type_concept_id}}</td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %}
