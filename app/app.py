@@ -1,7 +1,7 @@
 import os
 
 import redis
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from fhirclient import client
@@ -22,10 +22,16 @@ cache = redis.Redis(host='redis', port=6379)
 import fhirclient.models.patient as p
 from models import *
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
-  deaths = Death.query.limit(10).all()
-  return render_template('index.html', deaths=deaths)
+  errors = []
+  deaths = {}
+  try:
+    deaths = Death.query.limit(10).all()
+  except:
+    errors.append(
+      "Not connected to database")
+  return render_template('index.html',errors = errors, deaths=deaths)
 
 @app.route('/chart', methods=['GET', 'POST'])
 def chart():
