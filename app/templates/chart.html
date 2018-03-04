@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Recorded Deaths{% endblock %}
+{% block head %}
+  {{ super() }}
+{% endblock %}
+{% block content %}
+  <h1>Patient</h1>
+  <table class="table table-striped">
+  <thead>
+  <tr>
+    <th>birthdate</th>
+    <th>gender</th>
+    <th>name</th>
+  </tr>
+  </thead>
+  <tbody>
+  {% for patient in patients %}
+    <tr>
+    <td>{{ patient.birthdate.isostring }}</td>
+    <td>{{ patient.gender }}</td>
+    <td>{{ patient.name[0]}}</td>
+    </tr>
+  {% endfor %}
+</table>
+{% endblock %}
