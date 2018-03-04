@@ -2,3 +2,4 @@ flask
 redis
 Flask-SQLAlchemy==2.3.2
 Flask-Migrate==2.1.1
+psycopg2
