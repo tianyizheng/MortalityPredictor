@@ -16,19 +16,23 @@ settings = {
     'app_id': 'MortalityPredictor',
     'api_base': 'http://ehr.hdap.gatech.edu:8080/gt-fhir-webapp/base'
 }
+
 smart = client.FHIRClient(settings=settings)
 cache = redis.Redis(host='redis', port=6379)
 import fhirclient.models.patient as p
 from models import *
 
-
 @app.route('/')
 def index():
-    # deaths = Death.query.limit(10).all()
-    # return render_template('index.html', deaths=deaths)
+    deaths = Death.query.limit(10).all()
+    return render_template('index.html', deaths=deaths)
+
+@app.route('/chart')
+def index():
     search = p.Patient.where(struct={'_id': '1'})
     patients = search.perform_resources(smart.server)
     return render_template('chart.html', patients=patients)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0")
