@@ -13,8 +13,8 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 settings = {
-    'app_id': 'MortalityPredictor',
-    'api_base': 'http://ehr.hdap.gatech.edu:8080/gt-fhir-webapp/base'
+  'app_id': 'MortalityPredictor',
+  'api_base': 'http://ehr.hdap.gatech.edu:8080/gt-fhir-webapp/base'
 }
 
 smart = client.FHIRClient(settings=settings)
@@ -24,15 +24,24 @@ from models import *
 
 @app.route('/')
 def index():
-    deaths = Death.query.limit(10).all()
-    return render_template('index.html', deaths=deaths)
+  deaths = Death.query.limit(10).all()
+  return render_template('index.html', deaths=deaths)
 
-@app.route('/chart')
-def index():
-    search = p.Patient.where(struct={'_id': '1'})
-    patients = search.perform_resources(smart.server)
-    return render_template('chart.html', patients=patients)
+@app.route('/chart', methods=['GET', 'POST'])
+def chart():
+  errors = []
+  patients = {}
+  if request.method == 'POST':
+    try:
+      name = request.form['name'].upper()
+      search = p.Patient.where(struct={'name': name})
+      patients = search.perform_resources(smart.server)
+    except:
+      errors.append(
+        "Error occured trying to find {0}.".format(name)
+        )
+  return render_template('chart.html', errors = errors, patients=patients)
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0")
+  app.run(host="0.0.0.0")
