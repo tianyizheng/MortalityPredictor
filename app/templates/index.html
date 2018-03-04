@@ -1,25 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Recorded Deaths{% endblock %}
+{% block title %}Recorded Deaths from Postgres{% endblock %}
 {% block head %}
   {{ super() }}
 {% endblock %}
 {% block content %}
   <h1>Recorded Deaths</h1>
-  <table class="table table-striped">
-  <thead>
-  <tr>
-    <th>id</th>
-    <th>date</th>
-    <th>type</th>
-  </tr>
-  </thead>
-  <tbody>
-  {% for death in deaths %}
-    <tr>
-    <td>{{ death.person_id }}</td>
-    <td>{{ death.death_date }}</td>
-    <td>{{ death.death_type_concept_id}}</td>
-    </tr>
+  <br>
+  {% for error in errors %}
+    <h4>{{ error }}</h4>
   {% endfor %}
-</table>
+  {% if deaths %}
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>id</th>
+          <th>date</th>
+          <th>type</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for death in deaths %}
+          <tr>
+            <td>{{ death.person_id }}</td>
+            <td>{{ death.death_date }}</td>
+            <td>{{ death.death_type_concept_id}}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+<li class="active"><a href="{{ url_for('chart') }}">chart</a></li>
 {% endblock %}
