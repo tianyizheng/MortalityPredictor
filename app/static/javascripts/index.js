@@ -3,10 +3,10 @@ requirejs.config({
     paths: {
         main: 'main',
         jquery: 'lib/jquery-3.3.1.min',
-        bootstrap: 'lib/bootstrap.min',
+        //bootstrap: 'lib/bootstrap.min',
         //jqueryui: 'lib/jquery-ui.min',
         d3: 'lib/d3.min',
-        //socketio: '../socket.io/socket.io',
+        socketio: '//cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.4/socket.io',
     }
 });
 

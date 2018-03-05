@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Patient{% endblock %}
+{% block head %}
+  {{ super() }}
+
+  <link rel="stylesheet" href="/static/stylesheets/chart.css">
+  <script data-main="/static/javascripts/index" src="/static/javascripts/lib/require.js"></script>
+
+{% endblock %}
+{% block content %}
+  <h1>Patient</h1>
+    <div class="form-group">
+      <input type="text" name="name" class="form-control" id="patientNameInput" placeholder="Enter Name" style="max-width: 300px;" autofocus required>
+    </div>
+    <button id="patientSubmitButton" type="submit" class="btn btn-default">Submit</button>
+
+    <div class="chartArea">
+      <svg id="patientChart" width="500" height="500">
+
+
+      </svg>
+    </div>
+{% endblock %}
