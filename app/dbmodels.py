@@ -28,3 +28,24 @@ class Death(db.Model):
         self.x_srcfile=x_srcfile
         self.x_createdate=x_createdate
         self.x_updatedate=x_updatedate
+
+class Concept(db.Model):
+  __tablename__ = 'concept'
+
+  concept_id = db.Column(db.Integer, primary_key=True, nullable=False)
+  concept_code = db.Column(db.String(50))
+  vocabulary_id = db.Column(db.String(20))
+
+  def __init__(self, concept_id, concept_code, vocabulary_id):
+    self.concept_id = concept_id
+    self.concept_code = concept_code
+    self.vocabulary_id = vocabulary_id
+
+class ConditionOccurence(db.Model):
+  __tablename__ = 'condition_occurrence'
+
+  condition_occurrence_id = db.Column(db.Integer, primary_key=True, nullable=False)
+  condition_concept_id = db.Column(db.Integer, nullable=False)
+  condition_source_value = db.Column(db.String(50))
+  condition_source_concept_id = db.Column(db.Integer)
+

@@ -20,17 +20,17 @@
     <table class="table table-striped">
       <thead>
         <tr>
+          <th>name</th>
           <th>birthdate</th>
           <th>gender</th>
-          <th>name</th>
         </tr>
       </thead>
       <tbody>
         {% for patient in patients %}
           <tr>
-            <td>{{ patient.birthDate.isostring }}</td>
-            <td>{{ patient.gender }}</td>
-            <td>{{patient.name[0].given[0]}} {{ patient.name[0].family[0]}} </td>
+            <td> <a href="{{ url_for('patient', patientID=patient.resource.id) }}">{{ patient.resource.name[0].given[0]}} {{ patient.resource.name[0].family[0]}} </a> </td>
+            <td>{{ patient.resource.birthDate.isostring }}</td>
+            <td>{{ patient.resource.gender }}</td>
           </tr>
         {% endfor %}
       </tbody>
