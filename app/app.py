@@ -97,10 +97,12 @@ def patient(patientID):
   ''' handles individual patient's list of code '''
 
   errors = []
-
+  keys = []
   # icdCodes kept in dictionary
   # with each visit having a lsit of codes
   icdCodes = {}
+
+  icdCodes = conceptSearch(patientID)
 
   try:
     # get icdCodes form patientID
@@ -145,18 +147,12 @@ def icdSearch(snowmed):
   ''' Translates given snowmed code into icd9 code  '''
 
   # query the concept table to get corresponding conceptID to SNOWMED code
-  concept = Concept.query.filter_by(concept_code=snowmed).limit(1).all()
-
-  # get the ID
-  conceptID = concept[0].concept_id
-
-  # query condition table for icd9 code corresponding to conceptID
-  icd = ConditionOccurence.query.filter_by(condition_concept_id=conceptID).limit(1).all()
   
-  # get the icd9Code
-  result = icd[0].condition_source_value
+  icd = ConditionOccurence.query.join(Concept, Concept.concept_id==ConditionOccurence.condition_concept_id) \
+        .filter(Concept.concept_code==snowmed) \
+        .first().condition_source_value
 
-  return result
+  return icd
 
 def conceptSearch(patientID):
 
