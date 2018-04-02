@@ -9,8 +9,6 @@ import theano.tensor as T
 from theano import config
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
-from sklearn.metrics import roc_auc_score
-
 
 def unzip(zipped):
     new_params = OrderedDict()
@@ -269,8 +267,6 @@ class MortalityPredictor(object):
         params = init_params(options)
         if len(modelFile) > 0: params = load_params(options)
         tparams = init_tparams(params, options)
-
-        print(list(tparams.values()))
 
         print('Building the model ... ')
         if useTime and embFineTune:

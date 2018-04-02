@@ -12,6 +12,8 @@ from flask import make_response
 from functools import wraps, update_wrapper
 from datetime import datetime
 
+from MortalityPredictor import MortalityPredictor
+
 app = Flask(__name__)
 app.config.from_object(os.environ['APP_SETTINGS'])
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -206,4 +208,11 @@ def conceptSearch(patientID):
 
 if __name__ == "__main__":
   # app.run(host="0.0.0.0")
+
+  model = MortalityPredictor('models/mimic3.model.npz')
+
+  # Should output 0.5791347762818906
+  print(model.predict([[1, 2, 3], [4, 5, 6]]))
+
+
   socketio.run(app, host="0.0.0.0")
