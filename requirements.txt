@@ -4,4 +4,6 @@ Flask-SQLAlchemy==2.3.2
 Flask-Migrate==2.1.1
 fhirclient==1.0.3
 flask-socketio
+numpy
+scipy
 Theano
