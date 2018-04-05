@@ -34,6 +34,9 @@ import fhirclient.models.condition as conditions
 from dbmodels import db, Death, Concept, ConditionOccurence
 db.init_app(app)
 
+
+model = MortalityPredictor('models/mimic3.model.npz', 'models/mimic3.types')
+
 @app.after_request
 def set_response_headers(response):
   ''' mainly for not to cache '''
@@ -68,7 +71,7 @@ def chart():
   errors = []
   patients = []
 
-  # if a name is entered 
+  # if a name is entered
   if request.method == 'POST':
 
     try:
@@ -112,10 +115,19 @@ def patient(patientID):
 
     # get sorted keys from dictionary
     keys = sorted(icdCodes)
+
+    encounterData = []
+
+    for encounterId in keys:
+        diagnoses = list(icdCodes[encounterId])
+        encounterData.append(diagnoses)
+
+    prediction = model.predict_icd9(encounterData)
+
   except:
     errors.append("error")
 
-  return render_template('patient.html', patientID = patientID, errors = errors, codes=icdCodes, keys=keys)
+  return render_template('patient.html', patientID = patientID, mortalityPrediction=prediction, errors = errors, codes=icdCodes, keys=keys)
 
 
 @app.route('/chart2', methods=['GET'])
@@ -149,7 +161,7 @@ def icdSearch(snowmed):
   ''' Translates given snowmed code into icd9 code  '''
 
   # query the concept table to get corresponding conceptID to SNOWMED code
-  
+
   icd = ConditionOccurence.query.join(Concept, Concept.concept_id==ConditionOccurence.condition_concept_id) \
         .filter(Concept.concept_code==snowmed) \
         .first().condition_source_value
@@ -158,14 +170,14 @@ def icdSearch(snowmed):
 
 def conceptSearch(patientID):
 
-  ''' given patientID, returns a dictionary of icd9Codes 
+  ''' given patientID, returns a dictionary of icd9Codes
       ordered by visits '''
 
   result = {}
 
   # search for patient's conditions
   search = conditions.Condition.where(struct={'patient': patientID})
-  
+
   # TODO: pagination of bundles
   bundle = search.perform(smart.server)
 
@@ -175,7 +187,7 @@ def conceptSearch(patientID):
 
 
       if e.resource.encounter and e.resource.code:
-        
+
         # get the encounterID and code list for an individual visit
         encounter = e.resource.encounter.reference[10:]
         codes = e.resource.code.coding
@@ -204,15 +216,8 @@ def conceptSearch(patientID):
 
 
   return(result)
-  
+
 
 if __name__ == "__main__":
   # app.run(host="0.0.0.0")
-
-  model = MortalityPredictor('models/mimic3.model.npz')
-
-  # Should output 0.5791347762818906
-  print(model.predict([[1, 2, 3], [4, 5, 6]]))
-
-
   socketio.run(app, host="0.0.0.0")

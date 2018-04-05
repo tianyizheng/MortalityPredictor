@@ -64,11 +64,11 @@ def init_params(options):
     betaHiddenDimSize= options['betaHiddenDimSize']
     numClass = options['numClass']
 
-    if len(embFile) > 0: 
+    if len(embFile) > 0:
         print('using external code embedding')
         params['W_emb'] = load_embedding(embFile)
         embDimSize = params['W_emb'].shape[1]
-    else: 
+    else:
         print('using randomly initialized code embedding')
         params['W_emb'] = get_random_weight(inputDimSize, embDimSize)
 
@@ -192,12 +192,15 @@ def build_model(tparams, options, W_emb=None):
 
 
 class MortalityPredictor(object):
-    def __init__(self, modelFile, embFile='', useTime=False):
+    def __init__(self, modelFile, codeFile, embFile='', useTime=False):
 
         # The filepath of the saved numpy model to load
         modelFile = modelFile
+        codeFile = codeFile
 
-        # The path to the Pickled file containing the representation vectors of medical codes. 
+        self.codes = pickle.load(open(codeFile, 'rb'))
+
+        # The path to the Pickled file containing the representation vectors of medical codes.
         # If you are not using medical code representations, do not use this option
         # embFile='embFile.txt'
         # Note: NO EMB FILE HERE
@@ -216,12 +219,12 @@ class MortalityPredictor(object):
         # Use logarithm of time duration to dampen the impact of the outliers
         useLogTime=True
 
-        # The size of the visit embedding. 
+        # The size of the visit embedding.
         # If you are not providing your own medical code vectors, you can specify this value
         embDimSize=128
 
-        # If you are using randomly initialized code representations, always use this option. 
-        # If you are using an external medical code representations, 
+        # If you are using randomly initialized code representations, always use this option.
+        # If you are using an external medical code representations,
         # and you want to fine-tune them as you train RETAIN, use this option
         embFineTune=True
 
@@ -253,7 +256,7 @@ class MortalityPredictor(object):
         keepProbEmb=0.5
 
         # type=float
-        # Decides how much you want to keep during the dropout between 
+        # Decides how much you want to keep during the dropout between
         # the context vector c_i and the final classifier
         keepProbContext=0.5
 
@@ -300,6 +303,35 @@ class MortalityPredictor(object):
         else:
             xs, lengths = padMatrixWithoutTime([x], self.options)
             return self.pred(xs, lengths)[0]
+
+    def icd9_to_sparse(self, code):
+        code_str = 'D_'
+        if code.startswith('E'):
+            code_str = code_str + 'E'
+            code = code[1:]
+        if len(code) > 3:
+            code = code[0:3] + '.' + code[3:]
+        code_str = code_str + code
+
+        if code_str in self.codes:
+            return self.codes[code_str]
+        else:
+            return None
+
+    def predict_icd9(self, data):
+        # Given a list of list of icd9 codes
+        # convert into the vector representation needed by the model
+        inputs = []
+
+        for encounter in data:
+            encounter_input = [diagnosis for diagnosis in map(lambda x: self.icd9_to_sparse(x), encounter) if diagnosis is not None]
+            if len(encounter_input) > 0:
+                inputs.append(encounter_input)
+
+        if len(inputs) > 0:
+            return self.predict(inputs)
+        else:
+            return None
 
 
 if __name__ == '__main__':
