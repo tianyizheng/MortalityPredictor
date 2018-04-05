@@ -123,11 +123,14 @@ def patient(patientID):
         encounterData.append(diagnoses)
 
     prediction = model.predict_icd9(encounterData)
+    incrementalPredictions = model.incremental_predict_icd9(encounterData)
 
   except:
     errors.append("error")
 
-  return render_template('patient.html', patientID = patientID, mortalityPrediction=prediction, errors = errors, codes=icdCodes, keys=keys)
+  return render_template('patient.html', patientID = patientID,
+    mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions,
+    errors = errors, codes=icdCodes, keys=keys)
 
 
 @app.route('/chart2', methods=['GET'])

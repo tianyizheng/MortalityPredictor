@@ -333,6 +333,14 @@ class MortalityPredictor(object):
         else:
             return None
 
+    def incremental_predict_icd9(self, data):
+        preds = []
+        for i in range(len(data)):
+            inputs = data[:i+1]
+            preds.append(self.predict_icd9(inputs))
+
+        return preds
+
 
 if __name__ == '__main__':
 
