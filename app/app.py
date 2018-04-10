@@ -103,6 +103,8 @@ def patient(patientID):
 
   errors = []
   keys = []
+  prediction = []
+  incrementalPredictions = []
   # icdCodes kept in dictionary
   # with each encounter having a lsit of codes
   icdCodes = {}
@@ -122,8 +124,9 @@ def patient(patientID):
         diagnoses = list(icdCodes[0][encounterId])
         encounterData.append(diagnoses)
 
-    prediction = model.predict_icd9(encounterData)
-    incrementalPredictions = model.incremental_predict_icd9(encounterData)
+    rounding_factor = 10000.0
+    prediction = round(model.predict_icd9(encounterData) * rounding_factor) / rounding_factor
+    incrementalPredictions = list(map(lambda x: round(x * rounding_factor) / rounding_factor, model.incremental_predict_icd9(encounterData)))
 
   except:
     errors.append("error")
