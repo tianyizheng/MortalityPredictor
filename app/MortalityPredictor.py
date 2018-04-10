@@ -138,7 +138,8 @@ def build_model(tparams, options, W_emb=None):
     betaHiddenDimSize = options['betaHiddenDimSize']
 
     trng = RandomStreams(1234)
-    use_noise = theano.shared(numpy_floatX(0.))
+    #use_noise = theano.shared(numpy_floatX(0.))
+    use_noise = False
     useTime = options['useTime']
 
     x = T.tensor3('x', dtype=config.floatX)
@@ -152,11 +153,11 @@ def build_model(tparams, options, W_emb=None):
     if options['embFineTune']: emb = T.dot(x, tparams['W_emb'])
     else: emb = T.dot(x, W_emb)
 
-    if keep_prob_emb < 1.0: emb = dropout_layer(emb, use_noise, trng, keep_prob_emb)
+    #if keep_prob_emb < 1.0: emb = dropout_layer(emb, use_noise, trng, keep_prob_emb)
 
     if useTime: temb = T.concatenate([emb, t.reshape([n_timesteps,n_samples,1])], axis=2) #Adding the time element to the embedding
     else: temb = emb
-
+    
     def attentionStep(att_timesteps):
         reverse_emb_t = temb[:att_timesteps][::-1]
         reverse_h_a = gru_layer(tparams, reverse_emb_t, 'a', alphaHiddenDimSize)[::-1] * 0.5
@@ -169,11 +170,26 @@ def build_model(tparams, options, W_emb=None):
         beta = T.tanh(T.dot(reverse_h_b, tparams['W_beta']) + tparams['b_beta'])
         c_t = (alpha[:,:,None] * beta * emb[:att_timesteps]).sum(axis=0)
         return c_t
+        
+    def attentionStep_alpha_beta(att_timesteps):
+        reverse_emb_t = temb[:att_timesteps][::-1]
+        reverse_h_a = gru_layer(tparams, reverse_emb_t, 'a', alphaHiddenDimSize)[::-1] * 0.5
+        reverse_h_b = gru_layer(tparams, reverse_emb_t, 'b', betaHiddenDimSize)[::-1] * 0.5
+
+        preAlpha = T.dot(reverse_h_a, tparams['w_alpha']) + tparams['b_alpha']
+        preAlpha = preAlpha.reshape((preAlpha.shape[0], preAlpha.shape[1]))
+        alpha = (T.nnet.softmax(preAlpha.T)).T
+        
+        beta = T.tanh(T.dot(reverse_h_b, tparams['W_beta']) + tparams['b_beta'])
+        c_t = (alpha[:,:,None] * beta).sum(axis=0)
+        return c_t
+        
 
     counts = T.arange(n_timesteps)+ 1
     c_t, updates = theano.scan(fn=attentionStep, sequences=[counts], outputs_info=None, name='attention_layer', n_steps=n_timesteps)
-    if keep_prob_context < 1.0: c_t = dropout_layer(c_t, use_noise, trng, keep_prob_context)
-
+    alpha_beta, updates = theano.scan(fn=attentionStep_alpha_beta, sequences=[counts], outputs_info=None, name='attention_alpha_beta', n_steps=n_timesteps)
+    #if keep_prob_context < 1.0: c_t = dropout_layer(c_t, use_noise, trng, keep_prob_context)
+    
     preY = T.nnet.sigmoid(T.dot(c_t, tparams['w_output']) + tparams['b_output'])
     preY = preY.reshape((preY.shape[0], preY.shape[1]))
     indexRow = T.arange(n_samples)
@@ -187,8 +203,8 @@ def build_model(tparams, options, W_emb=None):
 
     if options['embFineTune']: cost += options['L2_emb'] * (tparams['W_emb']**2).sum()
 
-    if useTime: return use_noise, x, y, t, lengths, cost_noreg, cost, y_hat
-    else: return use_noise, x, y, lengths, cost_noreg, cost, y_hat
+    if useTime: return x, y, t, lengths, cost_noreg, cost, y_hat, c_t
+    else: return x, y, lengths, cost_noreg, cost, y_hat, c_t, emb, alpha_beta
 
 
 class MortalityPredictor(object):
@@ -274,34 +290,78 @@ class MortalityPredictor(object):
         print('Building the model ... ')
         if useTime and embFineTune:
             print('using time information, fine-tuning code representations')
-            use_noise, x, y, t, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options)
+            x, y, t, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options)
             get_prediction = theano.function(inputs=[x, t, lengths], outputs=y_hat, name='get_prediction')
         elif useTime and not embFineTune:
             print('using time information, not fine-tuning code representations')
             W_emb = theano.shared(params['W_emb'], name='W_emb')
-            use_noise, x, y, t, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options, W_emb)
+            x, y, t, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options, W_emb)
             get_prediction = theano.function(inputs=[x, t, lengths], outputs=y_hat, name='get_prediction')
         elif not useTime and embFineTune:
             print('not using time information, fine-tuning code representations')
-            use_noise, x, y, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options)
+            x, y, lengths, cost_noreg, cost, y_hat, attention, embedding, alpha_beta =  build_model(tparams, options)
             get_prediction = theano.function(inputs=[x, lengths], outputs=y_hat, name='get_prediction')
+            get_attention = theano.function(inputs=[x, lengths], outputs=attention, name='get_attention', on_unused_input='ignore')
+            get_embedding = theano.function(inputs=[x, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
+            get_alpha_beta = theano.function(inputs=[x, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
         elif not useTime and not embFineTune:
             print('not using time information, not fine-tuning code representations')
             W_emb = theano.shared(params['W_emb'], name='W_emb')
-            use_noise, x, y, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options, W_emb)
+            x, y, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options, W_emb)
             get_prediction = theano.function(inputs=[x, lengths], outputs=y_hat, name='get_prediction')
 
-        use_noise.set_value(0.)
+        #use_noise.set_value(0.)
 
         self.pred = get_prediction
+        self.attention = get_attention
+        self.embedding = get_embedding
+        self.alpha_beta = get_alpha_beta
         self.options = options
 
+    # And calculate contribution score for each input
     def predict(self, x, t=None):
         if self.options['useTime']:
             xs, ts, lengths = padMatrixWithTime(batchX, batchT, options)
-            return self.preed(xs, ts, lengths)[0]
+            return self.pred(xs, ts, lengths)[0]
         else:
             xs, lengths = padMatrixWithoutTime([x], self.options)
+
+            embeddings = []
+            for encounter in x:
+                # get embedding of each diagnonsis separately
+                separate = np.expand_dims(np.array(encounter), 1).tolist()
+                x_e, lengths_e = padMatrixWithoutTime([separate], self.options)
+                
+                # Embeddings at time step t
+                embeddings_t = self.embedding(x_e, lengths_e).squeeze(1)
+                embeddings.append(embeddings_t)
+                
+                #print(embeddings_t.shape)
+                
+            #all_embeddings = np.concatenate(embeddings, axis=1)
+            #print(all_embeddings.shape)
+                
+            
+            #attention = self.attention(xs, lengths).squeeze(1)
+            attention = self.alpha_beta(xs, lengths).squeeze(1)
+            #beta = self.beta(xs, lengths)
+            
+            print('attention?', attention.shape)
+            
+            for embedding, c_t in zip(embeddings, attention):
+                a_t = np.tile(np.expand_dims(c_t, 0), [embedding.shape[0], 1])
+                #print(embedding.shape, a_t.shape)
+                #print(np.min(a_t), np.max(a_t))
+                
+                contribution = np.sum(embedding * a_t, axis=1)
+                print(contribution, np.sum(contribution))
+            
+            #contribution = np.sum(all_embeddings * attention, axis=2)
+            
+            #print(attention.shape)
+            #print(contribution)
+            #print(attention)
+            
             return self.pred(xs, lengths)[0]
 
     def icd9_to_sparse(self, code):
@@ -347,11 +407,21 @@ if __name__ == '__main__':
     sample_item = [[76, 507, 160, 30], [664, 1665, 1206, 61, 193, 141, 7, 2186, 123]]
     small_test_set = [sample_item]
 
-    model = MortalityPredictor('models/mimic3.model.npz')
+    model = MortalityPredictor('models/mimic3.model.npz', 'models/mimic3.types')
 
     # Should output 0.13253019598600665
-    p = model.predict(sample_item)
-    print(p)
+    print(model.predict(sample_item))
+    
+    
+    print(model.predict(sample_item[:1]))
+    
+    print(model.predict(sample_item[:2]))
+    
+
+    print(model.predict([[1, 2, 3]]))
 
     # Should output 0.5791347762818906
     print(model.predict([[1, 2, 3], [4, 5, 6]]))
+    
+    
+    print(model.predict([[1, 2, 3], [4, 5, 6], [7, 8, 9], [2, 4, 10, 11, 12]]))
