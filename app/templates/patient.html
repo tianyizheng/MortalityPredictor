@@ -20,6 +20,7 @@
         <tr>
           <th>encounter</th>
           <th>icd Code</th>
+          <th>period</th>
         </tr>
       </thead>
       <tbody>
@@ -34,6 +35,10 @@
               <td>{{ code }}</td>
             </tr>
           {% endfor %}
+          <tr>
+            <th>{{ period[0], period[1] }}</th>
+            <th></th>
+          </tr>
         {% endfor %}
       </tbody>
     </table>
