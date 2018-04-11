@@ -2,7 +2,7 @@
 {% block title %}Patient Code{% endblock %}
 {% block head %}
   {{ super() }}
-  <script src="/static/javascripts/lib/d3.min.js"></script>
+  <script src="https://d3js.org/d3.v5.min.js"></script>
   <style>
   
   .line {
@@ -29,30 +29,29 @@
       <thead>
         <tr>
           <th>encounter</th>
-          <th>icd Code</th>
           <th>period</th>
+          <th>icd Code</th>
         </tr>
       </thead>
       <tbody>
         {% for key in keys %}
           <tr>
-            <th>{{ key }}</th>
-            <th></th>
+            <td>{{ key }}</td>
+            <td>{{ period[key][0].isostring, period[key][1].isostring }}<td>
+            <td></td>
           </tr>
           {% for code in codes[key] %}
             <tr>
               <td></td>
+              <td></td>
               <td>{{ code }}</td>
             </tr>
           {% endfor %}
-          <tr>
-            <th>{{ period[0], period[1] }}</th>
-            <th></th>
-          </tr>
         {% endfor %}
       </tbody>
     </table>
   {% endif %}
+  
   <script type="text/javascript">
   
     var data = [

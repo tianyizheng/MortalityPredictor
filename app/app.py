@@ -127,13 +127,12 @@ def patient(patientID):
     rounding_factor = 10000.0
     prediction = round(model.predict_icd9(encounterData) * rounding_factor) / rounding_factor
     incrementalPredictions = list(map(lambda x: round(x * rounding_factor) / rounding_factor, model.incremental_predict_icd9(encounterData)))
-
   except:
     errors.append("error")
 
   return render_template('patient.html', patientID = patientID,
     mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions,
-    errors = errors, codes=icdCodes[0], keys=keys, periods=icdCodes[1])
+    errors = errors, codes=icdCodes[0], keys=keys, period=icdCodes[1])
 
 
 @app.route('/chart2', methods=['GET'])
@@ -199,8 +198,9 @@ def conceptSearch(patientID):
         # get the encounterID and code list for an individual encounter
         encounter = e.resource.encounter.reference[10:]
         codes = e.resource.code.coding
-        period = [e.resource.start, e.resource.end]
+        period = [e.resource.onsetPeriod.start, e.resource.onsetPeriod.end]
 
+        print(period)
         if codes and encounter:
 
           # if encounter already exist
