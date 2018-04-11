@@ -106,7 +106,7 @@ def patient(patientID):
   prediction = []
   incrementalPredictions = []
   # icdCodes kept in dictionary
-  # with each visit having a lsit of codes
+  # with each encounter having a lsit of codes
   icdCodes = {}
 
   icdCodes = conceptSearch(patientID)
@@ -117,12 +117,12 @@ def patient(patientID):
     codesAndScores = {}
 
     # get sorted keys from dictionary
-    keys = sorted(icdCodes)
+    keys = sorted(icdCodes[0])
 
     encounterData = []
 
     for encounterId in keys:
-        diagnoses = list(icdCodes[encounterId])
+        diagnoses = list(icdCodes[0][encounterId])
         encounterData.append(diagnoses)
 
     rounding_factor = 10000.0
@@ -146,7 +146,7 @@ def patient(patientID):
 
   return render_template('patient.html', patientID = patientID,
     mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions,
-    errors = errors, codes=codesAndScores, keys=keys)
+    errors = errors, codes=codesAndScores, keys=keys, period=icdCodes[1])
 
 
 @app.route('/chart2', methods=['GET'])
@@ -190,10 +190,12 @@ def icdSearch(snowmed):
 def conceptSearch(patientID):
 
   ''' given patientID, returns a dictionary of icd9Codes
-      ordered by visits '''
+      ordered by encounters '''
 
-  result = {}
+  encounterCodesDict = {}
+  encounterPeriodDict = {}
 
+  result = []
   # search for patient's conditions
   search = conditions.Condition.where(struct={'patient': patientID})
 
@@ -201,28 +203,29 @@ def conceptSearch(patientID):
   bundle = search.perform(smart.server)
 
   if bundle.entry:
-    # each entry's resource contains one visit and its codes
+    # each entry's resource contains one encounter and its codes
     for e in bundle.entry:
 
 
       if e.resource.encounter and e.resource.code:
 
-        # get the encounterID and code list for an individual visit
+        # get the encounterID and code list for an individual encounter
         encounter = e.resource.encounter.reference[10:]
         codes = e.resource.code.coding
+        period = [e.resource.onsetPeriod.start, e.resource.onsetPeriod.end]
 
         if codes and encounter:
 
-          # if visits already exist
-          if encounter in result:
+          # if encounter already exist
+          if encounter in encounterCodesDict:
 
             for c in codes:
 
             # append new code to collection of existing codes
-              if c.code not in result[encounter]:
+              if c.code not in encounterCodesDict[encounter]:
 
                 # translates snowmed to icd9
-                result[encounter].add(icdSearch(c.code))
+                encounterCodesDict[encounter].add(icdSearch(c.code))
 
           else:
 
@@ -231,7 +234,10 @@ def conceptSearch(patientID):
             codeList = set()
             for c in codes:
               codeList.add(icdSearch(c.code))
-            result[encounter] = codeList
+            encounterCodesDict[encounter] = codeList
+            if period:
+              encounterPeriodDict[encounter] = period
+  result = [encounterCodesDict, encounterPeriodDict]
 
 
   return(result)
