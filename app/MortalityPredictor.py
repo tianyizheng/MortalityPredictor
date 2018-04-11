@@ -203,8 +203,8 @@ def build_model(tparams, options, W_emb=None):
 
     if options['embFineTune']: cost += options['L2_emb'] * (tparams['W_emb']**2).sum()
 
-    if useTime: return x, y, t, lengths, cost_noreg, cost, y_hat, c_t
-    else: return x, y, lengths, cost_noreg, cost, y_hat, c_t, emb, alpha_beta
+    if useTime: return x, y, t, lengths, cost_noreg, cost, y_hat, emb, alpha_beta
+    else: return x, y, lengths, cost_noreg, cost, y_hat, emb, alpha_beta
 
 
 class MortalityPredictor(object):
@@ -290,30 +290,34 @@ class MortalityPredictor(object):
         print('Building the model ... ')
         if useTime and embFineTune:
             print('using time information, fine-tuning code representations')
-            x, y, t, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options)
+            x, y, t, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options)
             get_prediction = theano.function(inputs=[x, t, lengths], outputs=y_hat, name='get_prediction')
+            get_embedding = theano.function(inputs=[x, t, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
+            get_alpha_beta = theano.function(inputs=[x, t, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
         elif useTime and not embFineTune:
             print('using time information, not fine-tuning code representations')
             W_emb = theano.shared(params['W_emb'], name='W_emb')
-            x, y, t, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options, W_emb)
+            x, y, t, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options, W_emb)
             get_prediction = theano.function(inputs=[x, t, lengths], outputs=y_hat, name='get_prediction')
+            get_embedding = theano.function(inputs=[x, t, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
+            get_alpha_beta = theano.function(inputs=[x, t, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
         elif not useTime and embFineTune:
             print('not using time information, fine-tuning code representations')
-            x, y, lengths, cost_noreg, cost, y_hat, attention, embedding, alpha_beta =  build_model(tparams, options)
+            x, y, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options)
             get_prediction = theano.function(inputs=[x, lengths], outputs=y_hat, name='get_prediction')
-            get_attention = theano.function(inputs=[x, lengths], outputs=attention, name='get_attention', on_unused_input='ignore')
             get_embedding = theano.function(inputs=[x, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
             get_alpha_beta = theano.function(inputs=[x, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
         elif not useTime and not embFineTune:
             print('not using time information, not fine-tuning code representations')
             W_emb = theano.shared(params['W_emb'], name='W_emb')
-            x, y, lengths, cost_noreg, cost, y_hat =  build_model(tparams, options, W_emb)
+            x, y, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options, W_emb)
             get_prediction = theano.function(inputs=[x, lengths], outputs=y_hat, name='get_prediction')
+            get_embedding = theano.function(inputs=[x, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
+            get_alpha_beta = theano.function(inputs=[x, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
 
         #use_noise.set_value(0.)
 
         self.pred = get_prediction
-        self.attention = get_attention
         self.embedding = get_embedding
         self.alpha_beta = get_alpha_beta
         self.options = options
@@ -321,8 +325,7 @@ class MortalityPredictor(object):
     # And calculate contribution score for each input
     def predict(self, x, t=None):
         if self.options['useTime']:
-            xs, ts, lengths = padMatrixWithTime(batchX, batchT, options)
-            return self.pred(xs, ts, lengths)[0]
+            raise NotImplementedError('Using time as an input is not supported yet.')
         else:
             xs, lengths = padMatrixWithoutTime([x], self.options)
 
@@ -336,33 +339,14 @@ class MortalityPredictor(object):
                 embeddings_t = self.embedding(x_e, lengths_e).squeeze(1)
                 embeddings.append(embeddings_t)
                 
-                #print(embeddings_t.shape)
-                
-            #all_embeddings = np.concatenate(embeddings, axis=1)
-            #print(all_embeddings.shape)
-                
-            
-            #attention = self.attention(xs, lengths).squeeze(1)
             attention = self.alpha_beta(xs, lengths).squeeze(1)
-            #beta = self.beta(xs, lengths)
-            
-            print('attention?', attention.shape)
+            contributions = []
             
             for embedding, c_t in zip(embeddings, attention):
                 a_t = np.tile(np.expand_dims(c_t, 0), [embedding.shape[0], 1])
-                #print(embedding.shape, a_t.shape)
-                #print(np.min(a_t), np.max(a_t))
-                
-                contribution = np.sum(embedding * a_t, axis=1)
-                print(contribution, np.sum(contribution))
+                contributions.append(np.sum(embedding * a_t, axis=1).tolist())
             
-            #contribution = np.sum(all_embeddings * attention, axis=2)
-            
-            #print(attention.shape)
-            #print(contribution)
-            #print(attention)
-            
-            return self.pred(xs, lengths)[0]
+            return self.pred(xs, lengths)[0], contributions
 
     def icd9_to_sparse(self, code):
         code_str = 'D_'
@@ -391,15 +375,18 @@ class MortalityPredictor(object):
         if len(inputs) > 0:
             return self.predict(inputs)
         else:
-            return None
+            return None, None
 
     def incremental_predict_icd9(self, data):
         preds = []
+        contribs = []
         for i in range(len(data)):
             inputs = data[:i+1]
-            preds.append(self.predict_icd9(inputs))
+            p, c = self.predict_icd9(inputs)
+            preds.append(p)
+            contribs.append(c)
 
-        return preds
+        return preds, contribs
 
 
 if __name__ == '__main__':
@@ -410,18 +397,9 @@ if __name__ == '__main__':
     model = MortalityPredictor('models/mimic3.model.npz', 'models/mimic3.types')
 
     # Should output 0.13253019598600665
+    print(model.predict(sample_item[:1]))
     print(model.predict(sample_item))
     
-    
-    print(model.predict(sample_item[:1]))
-    
-    print(model.predict(sample_item[:2]))
-    
-
-    print(model.predict([[1, 2, 3]]))
-
     # Should output 0.5791347762818906
     print(model.predict([[1, 2, 3], [4, 5, 6]]))
     
-    
-    print(model.predict([[1, 2, 3], [4, 5, 6], [7, 8, 9], [2, 4, 10, 11, 12]]))

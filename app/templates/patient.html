@@ -30,6 +30,7 @@
         <tr>
           <th>encounter</th>
           <th>icd Code</th>
+          <th>contribution score</th>
         </tr>
       </thead>
       <tbody>
@@ -37,11 +38,13 @@
           <tr>
             <th>{{ key }}</th>
             <th></th>
+            <th></th>
           </tr>
-          {% for code in codes[key] %}
+          {% for code, score in codes[key] %}
             <tr>
               <td></td>
               <td>{{ code }}</td>
+              <td>{{ score }}</td>
             </tr>
           {% endfor %}
         {% endfor %}

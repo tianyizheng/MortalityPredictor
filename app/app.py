@@ -114,6 +114,7 @@ def patient(patientID):
   try:
     # get icdCodes form patientID
     icdCodes = conceptSearch(patientID)
+    codesAndScores = {}
 
     # get sorted keys from dictionary
     keys = sorted(icdCodes)
@@ -125,15 +126,27 @@ def patient(patientID):
         encounterData.append(diagnoses)
 
     rounding_factor = 10000.0
-    prediction = round(model.predict_icd9(encounterData) * rounding_factor) / rounding_factor
-    incrementalPredictions = list(map(lambda x: round(x * rounding_factor) / rounding_factor, model.incremental_predict_icd9(encounterData)))
-
-  except:
+    
+    preds, contributions = model.predict_icd9(encounterData)
+    prediction = round(preds * rounding_factor) / rounding_factor
+    
+    incremental_preds, _ = model.incremental_predict_icd9(encounterData)
+    incrementalPredictions = list(map(lambda x: round(x * rounding_factor) / rounding_factor, incremental_preds))
+    
+    # Zip each code with its corresponding contribution score
+    for i, encounterId in enumerate(keys):
+        codesAndScores[encounterId] = []
+        for j, code in enumerate(encounterData[i]):
+            score = round(contributions[i][j] * rounding_factor) / rounding_factor
+            codesAndScores[encounterId].append((code, score))
+                
+  except Exception as e:
     errors.append("error")
+    print(e)
 
   return render_template('patient.html', patientID = patientID,
     mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions,
-    errors = errors, codes=icdCodes, keys=keys)
+    errors = errors, codes=codesAndScores, keys=keys)
 
 
 @app.route('/chart2', methods=['GET'])
