@@ -10,201 +10,98 @@ from theano import config
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
 
-def unzip(zipped):
-    new_params = OrderedDict()
-    for key, value in zipped.items():
-        new_params[key] = value.get_value()
-    return new_params
+def sigmoid(x):
+  return 1. / (1. + np.exp(-x))
 
 def numpy_floatX(data):
-    return np.asarray(data, dtype=config.floatX)
-
-def get_random_weight(dim1, dim2, left=-0.1, right=0.1):
-    return np.random.uniform(left, right, (dim1, dim2)).astype(config.floatX)
+	return np.asarray(data, dtype=config.floatX)
 
 def load_embedding(infile):
-    Wemb = np.array(pickle.load(open(infile, 'rb'))).astype(config.floatX)
-    return Wemb
-
-def padMatrixWithTime(seqs, times, options):
-    lengths = np.array([len(seq) for seq in seqs]).astype('int32')
-    n_samples = len(seqs)
-    maxlen = np.max(lengths)
-
-    x = np.zeros((maxlen, n_samples, options['inputDimSize'])).astype(config.floatX)
-    t = np.zeros((maxlen, n_samples)).astype(config.floatX)
-    for idx, (seq,time) in enumerate(zip(seqs,times)):
-        for xvec, subseq in zip(x[:,idx,:], seq):
-            xvec[subseq] = 1.
-        t[:lengths[idx], idx] = time
-
-    if options['useLogTime']: t = np.log(t + 1.)
-
-    return x, t, lengths
-
-def padMatrixWithoutTime(seqs, options):
-    lengths = np.array([len(seq) for seq in seqs]).astype('int32')
-    n_samples = len(seqs)
-    maxlen = np.max(lengths)
-
-    x = np.zeros((maxlen, n_samples, options['inputDimSize'])).astype(config.floatX)
-    for idx, seq in enumerate(seqs):
-        for xvec, subseq in zip(x[:,idx,:], seq):
-            xvec[subseq] = 1.
-
-    return x, lengths
-
-def init_params(options):
-    params = OrderedDict()
-    useTime = options['useTime']
-    embFile = options['embFile']
-    embDimSize = options['embDimSize']
-    inputDimSize = options['inputDimSize']
-    alphaHiddenDimSize= options['alphaHiddenDimSize']
-    betaHiddenDimSize= options['betaHiddenDimSize']
-    numClass = options['numClass']
-
-    if len(embFile) > 0:
-        print('using external code embedding')
-        params['W_emb'] = load_embedding(embFile)
-        embDimSize = params['W_emb'].shape[1]
-    else:
-        print('using randomly initialized code embedding')
-        params['W_emb'] = get_random_weight(inputDimSize, embDimSize)
-
-    gruInputDimSize = embDimSize
-    if useTime: gruInputDimSize = embDimSize + 1
-
-    params['W_gru_a'] = get_random_weight(gruInputDimSize, 3*alphaHiddenDimSize)
-    params['U_gru_a'] = get_random_weight(alphaHiddenDimSize, 3*alphaHiddenDimSize)
-    params['b_gru_a'] = np.zeros(3 * alphaHiddenDimSize).astype(config.floatX)
-
-    params['W_gru_b'] = get_random_weight(gruInputDimSize, 3*betaHiddenDimSize)
-    params['U_gru_b'] = get_random_weight(betaHiddenDimSize, 3*betaHiddenDimSize)
-    params['b_gru_b'] = np.zeros(3 * betaHiddenDimSize).astype(config.floatX)
-
-    params['w_alpha'] = get_random_weight(alphaHiddenDimSize, 1)
-    params['b_alpha'] = np.zeros(1).astype(config.floatX)
-    params['W_beta'] = get_random_weight(betaHiddenDimSize, embDimSize)
-    params['b_beta'] = np.zeros(embDimSize).astype(config.floatX)
-    params['w_output'] = get_random_weight(embDimSize, numClass)
-    params['b_output'] = np.zeros(numClass).astype(config.floatX)
-    return params
+	Wemb = np.array(pickle.load(open(infile, 'rb'))).astype(config.floatX)
+	return Wemb
 
 def load_params(options):
-    return np.load(options['modelFile'])
+	params = OrderedDict()
+	weights = np.load(options['modelFile'])
+	for k,v in weights.items():
+		params[k] = v
+	if len(options['embFile']) > 0: params['W_emb'] = np.array(pickle.load(open(options['embFile'], 'rb'))).astype(config.floatX)
+	return params
 
 def init_tparams(params, options):
-    tparams = OrderedDict()
-    for key, value in params.items():
-        if not options['embFineTune'] and key == 'W_emb': continue
-        tparams[key] = theano.shared(value, name=key)
-    return tparams
-
-def dropout_layer(state_before, use_noise, trng, keep_prob=0.5):
-    proj = T.switch(
-        use_noise,
-        state_before * trng.binomial(state_before.shape, p=keep_prob, n=1, dtype=state_before.dtype) / keep_prob,
-        state_before)
-    return proj
+	tparams = OrderedDict()
+	for key, value in params.items():
+		tparams[key] = theano.shared(value, name=key)
+	return tparams
 
 def _slice(_x, n, dim):
-    if _x.ndim == 3:
-        return _x[:, :, n*dim:(n+1)*dim]
-    return _x[:, n*dim:(n+1)*dim]
+	if _x.ndim == 3:
+		return _x[:, :, n*dim:(n+1)*dim]
+	return _x[:, n*dim:(n+1)*dim]
 
 def gru_layer(tparams, emb, name, hiddenDimSize):
-    timesteps = emb.shape[0]
-    if emb.ndim == 3: n_samples = emb.shape[1]
-    else: n_samples = 1
+	timesteps = emb.shape[0]
+	if emb.ndim == 3: n_samples = emb.shape[1]
+	else: n_samples = 1
 
-    def stepFn(wx, h, U_gru):
-        uh = T.dot(h, U_gru)
-        r = T.nnet.sigmoid(_slice(wx, 0, hiddenDimSize) + _slice(uh, 0, hiddenDimSize))
-        z = T.nnet.sigmoid(_slice(wx, 1, hiddenDimSize) + _slice(uh, 1, hiddenDimSize))
-        h_tilde = T.tanh(_slice(wx, 2, hiddenDimSize) + r * _slice(uh, 2, hiddenDimSize))
-        h_new = z * h + ((1. - z) * h_tilde)
-        return h_new
+	def stepFn(wx, h, U_gru):
+		uh = T.dot(h, U_gru)
+		r = T.nnet.sigmoid(_slice(wx, 0, hiddenDimSize) + _slice(uh, 0, hiddenDimSize))
+		z = T.nnet.sigmoid(_slice(wx, 1, hiddenDimSize) + _slice(uh, 1, hiddenDimSize))
+		h_tilde = T.tanh(_slice(wx, 2, hiddenDimSize) + r * _slice(uh, 2, hiddenDimSize))
+		h_new = z * h + ((1. - z) * h_tilde)
+		return h_new
 
-    Wx = T.dot(emb, tparams['W_gru_'+name]) + tparams['b_gru_'+name]
-    results, updates = theano.scan(fn=stepFn, sequences=[Wx], outputs_info=T.alloc(numpy_floatX(0.0), n_samples, hiddenDimSize), non_sequences=[tparams['U_gru_'+name]], name='gru_layer', n_steps=timesteps)
+	Wx = T.dot(emb, tparams['W_gru_'+name]) + tparams['b_gru_'+name]
+	results, updates = theano.scan(fn=stepFn, sequences=[Wx], outputs_info=T.alloc(numpy_floatX(0.0), n_samples, hiddenDimSize), non_sequences=[tparams['U_gru_'+name]], name='gru_layer', n_steps=timesteps)
 
-    return results
+	return results
+	
+def build_model(tparams, options):
+	alphaHiddenDimSize = options['alphaHiddenDimSize']
+	betaHiddenDimSize = options['betaHiddenDimSize']
 
-def build_model(tparams, options, W_emb=None):
-    keep_prob_emb = options['keepProbEmb']
-    keep_prob_context = options['keepProbContext']
-    alphaHiddenDimSize = options['alphaHiddenDimSize']
-    betaHiddenDimSize = options['betaHiddenDimSize']
+	x = T.tensor3('x', dtype=config.floatX)
 
-    trng = RandomStreams(1234)
-    #use_noise = theano.shared(numpy_floatX(0.))
-    use_noise = False
-    useTime = options['useTime']
+	reverse_emb_t = x[::-1]
+	reverse_h_a = gru_layer(tparams, reverse_emb_t, 'a', alphaHiddenDimSize)[::-1] * 0.5
+	reverse_h_b = gru_layer(tparams, reverse_emb_t, 'b', betaHiddenDimSize)[::-1] * 0.5
 
-    x = T.tensor3('x', dtype=config.floatX)
-    t = T.matrix('t', dtype=config.floatX)
-    y = T.vector('y', dtype=config.floatX)
-    lengths = T.ivector('lengths')
+	preAlpha = T.dot(reverse_h_a, tparams['w_alpha']) + tparams['b_alpha']
+	preAlpha = preAlpha.reshape((preAlpha.shape[0], preAlpha.shape[1]))
+	alpha = (T.nnet.softmax(preAlpha.T)).T
 
-    n_timesteps = x.shape[0]
-    n_samples = x.shape[1]
+	beta = T.tanh(T.dot(reverse_h_b, tparams['W_beta']) + tparams['b_beta'])
+	
+	return x, alpha, beta
 
-    if options['embFineTune']: emb = T.dot(x, tparams['W_emb'])
-    else: emb = T.dot(x, W_emb)
+def padMatrixWithTime(seqs, times, options):
+	lengths = np.array([len(seq) for seq in seqs]).astype('int32')
+	n_samples = len(seqs)
+	maxlen = np.max(lengths)
 
-    #if keep_prob_emb < 1.0: emb = dropout_layer(emb, use_noise, trng, keep_prob_emb)
+	x = np.zeros((maxlen, n_samples, options['inputDimSize'])).astype(config.floatX)
+	t = np.zeros((maxlen, n_samples)).astype(config.floatX)
+	for idx, (seq,time) in enumerate(zip(seqs,times)):
+		for xvec, subseq in zip(x[:,idx,:], seq):
+			xvec[subseq] = 1.
+		t[:lengths[idx], idx] = time
 
-    if useTime: temb = T.concatenate([emb, t.reshape([n_timesteps,n_samples,1])], axis=2) #Adding the time element to the embedding
-    else: temb = emb
-    
-    def attentionStep(att_timesteps):
-        reverse_emb_t = temb[:att_timesteps][::-1]
-        reverse_h_a = gru_layer(tparams, reverse_emb_t, 'a', alphaHiddenDimSize)[::-1] * 0.5
-        reverse_h_b = gru_layer(tparams, reverse_emb_t, 'b', betaHiddenDimSize)[::-1] * 0.5
+	if options['useLogTime']: t = np.log(t + 1.)
 
-        preAlpha = T.dot(reverse_h_a, tparams['w_alpha']) + tparams['b_alpha']
-        preAlpha = preAlpha.reshape((preAlpha.shape[0], preAlpha.shape[1]))
-        alpha = (T.nnet.softmax(preAlpha.T)).T
+	return x, t, lengths
 
-        beta = T.tanh(T.dot(reverse_h_b, tparams['W_beta']) + tparams['b_beta'])
-        c_t = (alpha[:,:,None] * beta * emb[:att_timesteps]).sum(axis=0)
-        return c_t
-        
-    def attentionStep_alpha_beta(att_timesteps):
-        reverse_emb_t = temb[:att_timesteps][::-1]
-        reverse_h_a = gru_layer(tparams, reverse_emb_t, 'a', alphaHiddenDimSize)[::-1] * 0.5
-        reverse_h_b = gru_layer(tparams, reverse_emb_t, 'b', betaHiddenDimSize)[::-1] * 0.5
+def padMatrixWithoutTime(seqs, options):
+	lengths = np.array([len(seq) for seq in seqs]).astype('int32')
+	n_samples = len(seqs)
+	maxlen = np.max(lengths)
 
-        preAlpha = T.dot(reverse_h_a, tparams['w_alpha']) + tparams['b_alpha']
-        preAlpha = preAlpha.reshape((preAlpha.shape[0], preAlpha.shape[1]))
-        alpha = (T.nnet.softmax(preAlpha.T)).T
-        
-        beta = T.tanh(T.dot(reverse_h_b, tparams['W_beta']) + tparams['b_beta'])
-        c_t = (alpha[:,:,None] * beta).sum(axis=0)
-        return c_t
-        
+	x = np.zeros((maxlen, n_samples, options['inputDimSize'])).astype(config.floatX)
+	for idx, seq in enumerate(seqs):
+		for xvec, subseq in zip(x[:,idx,:], seq):
+			xvec[subseq] = 1.
 
-    counts = T.arange(n_timesteps)+ 1
-    c_t, updates = theano.scan(fn=attentionStep, sequences=[counts], outputs_info=None, name='attention_layer', n_steps=n_timesteps)
-    alpha_beta, updates = theano.scan(fn=attentionStep_alpha_beta, sequences=[counts], outputs_info=None, name='attention_alpha_beta', n_steps=n_timesteps)
-    #if keep_prob_context < 1.0: c_t = dropout_layer(c_t, use_noise, trng, keep_prob_context)
-    
-    preY = T.nnet.sigmoid(T.dot(c_t, tparams['w_output']) + tparams['b_output'])
-    preY = preY.reshape((preY.shape[0], preY.shape[1]))
-    indexRow = T.arange(n_samples)
-    y_hat = preY.T[indexRow, lengths - 1]
-
-    logEps = options['logEps']
-    cross_entropy = -(y * T.log(y_hat + logEps) + (1. - y) * T.log(1. - y_hat + logEps))
-    cost_noreg = T.mean(cross_entropy)
-
-    cost = cost_noreg + options['L2_output'] * (tparams['w_output']**2).sum() + options['L2_alpha'] * (tparams['w_alpha']**2).sum() + options['L2_beta'] * (tparams['W_beta']**2).sum()
-
-    if options['embFineTune']: cost += options['L2_emb'] * (tparams['W_emb']**2).sum()
-
-    if useTime: return x, y, t, lengths, cost_noreg, cost, y_hat, emb, alpha_beta
-    else: return x, y, lengths, cost_noreg, cost, y_hat, emb, alpha_beta
+	return x, lengths
 
 
 class MortalityPredictor(object):
@@ -267,59 +164,27 @@ class MortalityPredictor(object):
         L2_beta=0.001
 
         # type=float
-        # Decides how much you want to keep during the dropout between the embedded input and
-        # the alpha & beta generation process
-        keepProbEmb=0.5
-
-        # type=float
-        # Decides how much you want to keep during the dropout between
-        # the context vector c_i and the final classifier
-        keepProbContext=0.5
-
-        # type=float
         # A small value to prevent log(0)
         logEps=1e-8
 
         options = locals().copy()
 
-        print('Initializing the parameters ... ')
-        params = init_params(options)
-        if len(modelFile) > 0: params = load_params(options)
+        print('Loading the parameters ... ')
+        params = load_params(options)
         tparams = init_tparams(params, options)
 
+        options['alphaHiddenDimSize'] = params['w_alpha'].shape[0]
+        options['betaHiddenDimSize'] = params['W_beta'].shape[0]
+        options['inputDimSize'] = params['W_emb'].shape[0]
+
         print('Building the model ... ')
-        if useTime and embFineTune:
-            print('using time information, fine-tuning code representations')
-            x, y, t, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options)
-            get_prediction = theano.function(inputs=[x, t, lengths], outputs=y_hat, name='get_prediction')
-            get_embedding = theano.function(inputs=[x, t, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
-            get_alpha_beta = theano.function(inputs=[x, t, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
-        elif useTime and not embFineTune:
-            print('using time information, not fine-tuning code representations')
-            W_emb = theano.shared(params['W_emb'], name='W_emb')
-            x, y, t, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options, W_emb)
-            get_prediction = theano.function(inputs=[x, t, lengths], outputs=y_hat, name='get_prediction')
-            get_embedding = theano.function(inputs=[x, t, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
-            get_alpha_beta = theano.function(inputs=[x, t, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
-        elif not useTime and embFineTune:
-            print('not using time information, fine-tuning code representations')
-            x, y, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options)
-            get_prediction = theano.function(inputs=[x, lengths], outputs=y_hat, name='get_prediction')
-            get_embedding = theano.function(inputs=[x, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
-            get_alpha_beta = theano.function(inputs=[x, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
-        elif not useTime and not embFineTune:
-            print('not using time information, not fine-tuning code representations')
-            W_emb = theano.shared(params['W_emb'], name='W_emb')
-            x, y, lengths, cost_noreg, cost, y_hat, embedding, alpha_beta =  build_model(tparams, options, W_emb)
-            get_prediction = theano.function(inputs=[x, lengths], outputs=y_hat, name='get_prediction')
-            get_embedding = theano.function(inputs=[x, lengths], outputs=embedding, name='get_embedding', on_unused_input='ignore')
-            get_alpha_beta = theano.function(inputs=[x, lengths], outputs=alpha_beta, name='get_alpha_beta', on_unused_input='ignore')
+        x, alpha, beta =  build_model(tparams, options)
+        get_result = theano.function(inputs=[x], outputs=[alpha, beta], name='get_result')
+        
+        self.params = params
+        self.tparams = tparams
+        self.get_result = get_result
 
-        #use_noise.set_value(0.)
-
-        self.pred = get_prediction
-        self.embedding = get_embedding
-        self.alpha_beta = get_alpha_beta
         self.options = options
 
     # And calculate contribution score for each input
@@ -328,25 +193,31 @@ class MortalityPredictor(object):
             raise NotImplementedError('Using time as an input is not supported yet.')
         else:
             xs, lengths = padMatrixWithoutTime([x], self.options)
-
-            embeddings = []
-            for encounter in x:
-                # get embedding of each diagnonsis separately
-                separate = np.expand_dims(np.array(encounter), 1).tolist()
-                x_e, lengths_e = padMatrixWithoutTime([separate], self.options)
-                
-                # Embeddings at time step t
-                embeddings_t = self.embedding(x_e, lengths_e).squeeze(1)
-                embeddings.append(embeddings_t)
-                
-            attention = self.alpha_beta(xs, lengths).squeeze(1)
+            
+            emb = np.dot(xs, self.params['W_emb'])
+            
+            alpha, beta = self.get_result(emb)
+            
+            alpha = alpha[:,0]
+            beta = beta[:,0,:]
+            
+            ct = (alpha[:,None] * beta * emb[:,0,:]).sum(axis=0)
+            y_t = sigmoid(np.dot(ct, self.params['w_output']) + self.params['b_output'])[0]
+            
+            patient = x
             contributions = []
+            for i in range(len(patient)):
+                visit = patient[i]
+                c_per_visit = []
+                for j in range(len(visit)):
+                    code = visit[j]
+                    contribution = np.dot(self.params['w_output'].flatten(), alpha[i] * beta[i] * self.params['W_emb'][code])
+                    c_per_visit.append(contribution)
+                contributions.append(c_per_visit)
+                    
             
-            for embedding, c_t in zip(embeddings, attention):
-                a_t = np.tile(np.expand_dims(c_t, 0), [embedding.shape[0], 1])
-                contributions.append(np.sum(embedding * a_t, axis=1).tolist())
-            
-            return self.pred(xs, lengths)[0], contributions
+            return y_t, contributions
+
 
     def icd9_to_sparse(self, code):
         code_str = 'D_'

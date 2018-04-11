@@ -130,9 +130,11 @@ def patient(patientID):
     preds, contributions = model.predict_icd9(encounterData)
     prediction = round(preds * rounding_factor) / rounding_factor
     
-    incremental_preds, _ = model.incremental_predict_icd9(encounterData)
+    incremental_preds, incremental_contributions = model.incremental_predict_icd9(encounterData)
     incrementalPredictions = list(map(lambda x: round(x * rounding_factor) / rounding_factor, incremental_preds))
     
+    # TODO: This is only valid for the last prediction. Use incremental_contributions to get the contribution
+    # scores for the previous steps
     # Zip each code with its corresponding contribution score
     for i, encounterId in enumerate(keys):
         codesAndScores[encounterId] = []
