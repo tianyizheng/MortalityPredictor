@@ -22,7 +22,7 @@ socketio = SocketIO(app)
 
 settings = {
   'app_id': 'MortalityPredictor',
-  'api_base': 'http://ehr.hdap.gatech.edu:8080/gt-fhir-webapp/base'
+  'api_base': 'https://ehr.hdap.gatech.edu/gt-fhir-webapp/base'
 }
 
 smart = client.FHIRClient(settings=settings)
