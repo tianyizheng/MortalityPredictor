@@ -1,3 +1,25 @@
-#patientChart {
+#chart-container{
+	width: 1200px;
+}
+
+#mortality-chart {
 	border: 1px solid black;
+	float: left;
+	box-sizing: border-box;
+}
+#mortality-info {
+	float: left;
+	width: 400px;
+	padding: 10px;
+	box-sizing: border-box;
+}
+
+
+
+
+
+.line {
+	fill: none;
+	stroke: url(#temperature-gradient);
+	stroke-width: 1.5px;
 }

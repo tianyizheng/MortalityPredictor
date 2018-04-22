@@ -1,131 +1,115 @@
-{% extends "base.html" %}
-{% block title %}Patient Code{% endblock %}
-{% block head %}
-  {{ super() }}
-  <script src="https://d3js.org/d3.v5.min.js"></script>
-  <style>
-  
-  .line {
-    fill: none;
-    stroke: url(#temperature-gradient);
-    stroke-width: 1.5px;
-  }
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <link rel="stylesheet" href="/static/stylesheets/chart.css">
 
-  </style>
-{% endblock %}
-{% block content %}
-  <h1>Patient: {{ patientID }}</h1>
-  <h2>Mortality Prediction: {{ mortalityPrediction }}</h2>
-  <div id="chart-container">
-      <svg id="mortality-chart" width="400" height="200"></svg>
-  </div>
-  <br>
-  {% for error in errors %}
-    <h4>{{ error }}</h4>
-  {% endfor %}
-  <br>
-  {% if codes %}
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>encounter</th>
-          <th>period</th>
-          <th>icd Code</th>
-          <th>contribution score</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for key in keys %}
-          <tr>
-            <td>{{ key }}</td>
-            <td>{{ period[key][0].isostring, period[key][1].isostring }}<td>
-            <td></td>
-            <td></td>
-          </tr>
-          {% for code, score in codes[key] %}
-            <tr>
-              <td></td>
-              <td></td>
-              <td>{{ code }}</td>
-              <td>{{ score }}</td>
-            </tr>
-          {% endfor %}
-        {% endfor %}
-      </tbody>
-    </table>
-  {% endif %}
-  
-  <script type="text/javascript">
-  
-    var data = [
-        {% for pred in incrementalPredictions %}
-        {{ pred }},
-        {% endfor %}
-    ];
-    
-    var svg = d3.select("svg#mortality-chart");
-    var margin = {top: 20, right: 20, bottom: 30, left: 50};
-    var width = +svg.attr("width") - margin.left - margin.right;
-    var height = +svg.attr("height") - margin.top - margin.bottom;
-    var g = svg.append("g").attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-    
-    var x = d3.scaleLinear()
-        .rangeRound([0, width]);
+        <title>Patient Code</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+            integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    </head>
+    <body>
+        <div id="content">
+            <h1>Patient: {{ patientID }}</h1>
+            <h2>Mortality Prediction: {{ mortalityPrediction }}</h2>
+            <div id="chart-container">
+                <svg id="mortality-chart" width="800" height="500"></svg>
+                <div id="mortality-info"></div>
+            </div>
+            <br>
+            {% for error in errors %}
+                <h4>{{ error }}</h4>
+            {% endfor %}
+            <br>
+            {% if codes %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>encounter</th>
+                            <th>period</th>
+                            <th>icd Code</th>
+                            <th>contribution score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key in keys %}
+                            <tr>
+                                <td>{{ key }}</td>
+                                <td>{{ period[key][0].isostring, period[key][1].isostring }}<td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            {% for code, score in codes[key] %}
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td>{{ code }}</td>
+                                    <td>{{ score }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+            
+            
+        </div>
+        <script src="//code.jquery.com/jquery-2.2.1.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous">
+        </script>
+        <script src="/static/javascripts/Chart.js"></script>
+        <script type="text/javascript">
 
-    var y = d3.scaleLinear()
-        .rangeRound([height, 0]);
+            /*
+            two structs:
+            encounters, and codes
+
+            var encounters = [
+                {
+                    startDate: Date,
+                    endDate: Date,
+                    prediction: Number,
+                    contributions: [
+                        [Number, Number, ...],
+                    ],
+                    observations: [
+                        {
+                            code: String,
+                            name: String,
+                            units: String,
+                            value: Number,
+                        }
+                    ],
+                }
+            ];
+
+            var codes = [
+                {
+                    code: String,
+                    name: String,
+                }
+            ];
+
+            */
+
+            var encounterData = [
+                {% for key in keys %}
+                    {
+                        'ID': {{ key }}, 
+                        'startDate': new Date('{{ period[key][0].isostring }}'),
+                        'endDate': new Date('{{ period[key][1].isostring }}'),
+                        'prediction': {{ incrementalPredictions[loop.index - 1] }},
+                    },
+                {% endfor %}
+            ];
+
+            var svg = $('#mortality-chart');
+            var infoContainer = $('#mortality-info')
+            
+            var chart = new Chart(encounterData, svg, infoContainer);
+            
         
-    x.domain([-1, data.length]);
-    y.domain([0, 1]);
-    
-    var line = d3.line()
-        .x(function(d, i) { return x(i); })
-        .y(function(d) { return y(d); });
-        
-    svg.append("linearGradient")
-        .attr("id", "temperature-gradient")
-        .attr("gradientUnits", "userSpaceOnUse")
-        .attr("x1", 0).attr("y1", y(0))
-        .attr("x2", 0).attr("y2", y(1))
-    .selectAll("stop")
-        .data([
-            {offset: "0%", color: "steelblue"},
-            {offset: "50%", color: "gray"},
-            {offset: "100%", color: "red"}
-        ])
-    .enter().append("stop")
-        .attr("offset", function(d) { return d.offset; })
-        .attr("stop-color", function(d) { return d.color; });
-    
-    g.append("g")
-        .attr("transform", "translate(0," + height + ")")
-    .call(
-        d3.axisBottom(x)
-            .tickValues(Array.from(Array(data.length).keys()))
-            .tickFormat(function(d){ return 'Visit ' + (d + 1);})
-        )
-        .select(".domain")
-        .remove();
-
-      g.append("g")
-        .call(d3.axisLeft(y))
-    .append("text")
-        .attr("fill", "#000")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", "0.71em")
-        .attr("text-anchor", "end")
-        .text("Mortality Rate");
-
-      g.append("path")
-          .datum(data)
-          .attr("class", "line")
-          .attr("fill", "none")
-          .attr("stroke-linejoin", "round")
-          .attr("stroke-linecap", "round")
-          .attr("stroke-width", 1.5)
-          .attr("d", line);
-  
-  
-  </script>
-{% endblock %}
+        </script>
+    </body>
+</html>
