@@ -12,12 +12,29 @@ if (!String.prototype.format) {
     };
 }
 
+function calcAngledPoint(sourceX, sourceY, targetX, targetY, angle, scale){
+
+	// find the midpoint
+	var midX = (sourceX + targetX) / 2;
+	var midY = (sourceY + targetY) / 2; 
+
+	var h = Math.sqrt(Math.pow(midX - sourceX, 2) + Math.pow(midY - sourceY, 2));
+	var dx = sourceX - midX;
+
+	var theta = Math.acos(dx / h) + angle;
+	var x_ = Math.cos(theta) * (h / scale) + midX;
+	var y_ = -Math.sin(theta) * (h / scale) + midY;
+
+	return [x_, y_];
+}
+
 class Chart{
-	constructor(data, element, infoContainer){
+	constructor(data, codes, element, infoContainer){
 		console.log('connecting the chart 2');
 		var self = this;
 
 		this.data = data;
+		this.codes = codes;
 		this.svg = d3.select(element[0]);
 		this.infoContainer = infoContainer;
 
@@ -85,6 +102,43 @@ class Chart{
 			.attr('stroke-width', 1.5)
 			.attr('r', 10)
 
+		this.g.append('circle')
+			.attr('class', 'target-circle')
+			.attr('fill', 'none')
+			.attr('stroke', 'none')
+			.attr('stroke-width', 1.5)
+			.attr('r', 10)
+
+		this.g.append('circle')
+			.attr('class', 'source-circle')
+			.attr('fill', 'none')
+			.attr('stroke', 'none')
+			.attr('stroke-width', 1.5)
+			.attr('r', 10);
+
+		this.g.append('path')
+			.attr('class', 'contribution-arrow')
+			.attr('fill', 'none')
+			.attr('stroke-linejoin', 'round')
+			.attr('stroke-linecap', 'round')
+			.attr('stroke-width', 1.5);
+
+		var defs = this.svg.append("defs")
+
+		defs.append("marker")
+			.attr("id", "arrow")
+				.attr("viewBox", "0 -5 10 10")
+				.attr("refX", 5)
+				.attr("refY", 0)
+				.attr("markerWidth", 8)
+				.attr("markerHeight", 8)
+				.attr('fill', 'steelblue')
+				.attr("orient", "auto")
+			.append("path")
+				.attr("d", "M0,-5L10,0L0,5")
+				.attr("class","arrowHead");
+
+
 		this.interact = this.svg.append('g').attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')')
 			.append('rect')
 				.attr('class', 'interact')
@@ -121,6 +175,8 @@ class Chart{
 
 		// 0: admission mode, 1: date mode
 		this.axis_mode = 1;
+
+		this.max_contributions = 5;
 
 
 		this.draw();
@@ -170,13 +226,123 @@ class Chart{
 
 	}
 
-	updateInfo(d, i){
+	updateInfo(d, data_index){
+		var self = this;
+
+		//console.log(d);
+
+		// find top n contributions from the entire 2D array
+		var top = [];
+		var min_top = -Infinity;
+
+		for(var i = 0; i < d.contributions.length; i++){
+			for(var j = 0; j < d.contributions[i].length; j++){
+				var c = Math.round(d.contributions[i][j] * 10000) / 10000;
+
+				if(top.length < this.max_contributions || c > min_top){
+					top.push({
+						'encounterIdx': i,
+						'codeIdx': j,
+						'contribution': c,
+					});
+
+					top.sort(function(a, b){
+						return b.contribution - a.contribution;
+					});
+
+					min_top = top[top.length - 1].contribution;
+
+					if(top.length >= this.max_contributions){
+						top.pop();
+					}
+				}
+			}
+		}
+
+		
+
+		//console.log(top, min_top);
+
 		var html = $('<div class="">\
 			<div class="">Admission {0}</div>\
 			<div class="">Start: {1}</div>\
 			<div class="">End: {2}</div>\
 			<div class="">Mortality Rating: {3}</div>\
+			<div class="contributionContainer"><table></table></div>\
 		<div>'.format(i, d.startDate, d.endDate, d.prediction));
+
+		
+		var contributionTable = $('.contributionContainer table', html);
+
+		for(var i = 0; i < top.length; i++){
+			var codeData = this.codes[top[i].encounterIdx][top[i].codeIdx];
+			var contributionHtml = $('<tr class="contribution">\
+				<td class="date">{0}</td>\
+				<td class="code">{1}</td>\
+				<td class="name">{2}</td>\
+				<td class="score">{3}</td>\
+			</tr>'.format('date', codeData.code, 'name', top[i].contribution));
+
+			contributionHtml.on('mouseover', function(event){
+				//console.log(this.contributionData, this.sourceId);
+
+				// draw a circle on the target
+				var sourceData = self.data[this.sourceId];
+				var sourceX = self.x(self.getX(sourceData, this.sourceId));
+				var sourceY = self.y(self.getY(sourceData, this.sourceId));
+
+				var encounterData = self.data[this.contributionData.encounterIdx];
+				var targetX = self.x(self.getX(encounterData, this.contributionData.encounterIdx));
+				var targetY = self.y(self.getY(encounterData, this.contributionData.encounterIdx));
+
+				
+
+
+				if(this.sourceId !== this.contributionData.encounterIdx){
+					// draw source circle
+					self.g.select('circle.source-circle')
+						.attr('fill', 'steelblue')
+						.attr('cx', sourceX)
+						.attr('cy', sourceY)
+
+					var midpoints = calcAngledPoint(sourceX, sourceY, targetX, targetY, Math.PI / 2, 1);
+
+					var x_ = midpoints[0];
+					var y_ = midpoints[1];
+
+					self.g.select('path.contribution-arrow')
+						.attr('stroke', 'steelblue')
+						.attr('display', 'show')
+						.attr('d', 'M {0},{1} Q {2},{3} {4},{5}'.format(sourceX, sourceY, x_, y_, targetX, targetY));
+
+
+					// draw arrow from source to target
+				}
+				else{
+
+					self.g.select('circle.target-circle')
+						.attr('fill', 'red')
+						.attr('cx', targetX)
+						.attr('cy', targetY)
+				}
+
+
+
+			}.bind({contributionData: top[i], sourceId: parseInt(data_index)}))
+			.on('mouseout', function(event){
+				self.g.select('circle.source-circle')
+					.attr('fill', 'none');
+
+				self.g.select('circle.target-circle')
+					.attr('fill', 'none');
+
+
+				self.g.select('path.contribution-arrow')
+					.attr('display', 'none')
+			});
+
+			contributionTable.append(contributionHtml);
+		}
 
 		this.infoContainer.html(html);
 	}

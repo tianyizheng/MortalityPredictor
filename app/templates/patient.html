@@ -93,6 +93,35 @@
 
             */
 
+            var contribution_shape = [
+                {% for key in keys %}
+                    [ {% for code, score in codes[key] %}0,{% endfor %} ],
+                {% endfor %}
+            ];
+
+            var codes = [
+                {% for key in keys %}
+                    [ {% for code, score in codes[key] %}
+                        {
+                            'code': '{{ code }}',
+                            'name': '',
+                        },
+                    {% endfor %} ],
+                {% endfor %}
+            ];
+
+            function makeRandomContributions(shape){
+                var ret = [];
+                for(var i = 0; i < shape.length; i++){
+                    var encounter = [];
+                    for(var j = 0; j < shape[i].length; j++){
+                        encounter.push(Math.random() * 2 - 1);
+                    }
+                    ret.push(encounter);
+                }
+                return ret;
+            }
+
             var encounterData = [
                 {% for key in keys %}
                     {
@@ -104,10 +133,14 @@
                 {% endfor %}
             ];
 
+            for(var i = 0; i < encounterData.length; i++){
+                encounterData[i].contributions = makeRandomContributions(contribution_shape.slice(0, i + 1));
+            }
+
             var svg = $('#mortality-chart');
             var infoContainer = $('#mortality-info')
             
-            var chart = new Chart(encounterData, svg, infoContainer);
+            var chart = new Chart(encounterData, codes, svg, infoContainer);
             
         
         </script>

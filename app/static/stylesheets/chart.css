@@ -14,12 +14,24 @@
 	box-sizing: border-box;
 }
 
-
-
-
-
 .line {
 	fill: none;
 	stroke: url(#temperature-gradient);
 	stroke-width: 1.5px;
+}
+
+.contributionContainer tr.contribution td{
+	padding: 4px;
+}
+
+.contributionContainer tr.contribution td.date{
+	padding-left: 0;
+}
+
+.contributionContainer tr.contribution td.score{
+	padding-right: 0;
+}
+
+path.contribution-arrow {
+	marker-end: url(#arrow);
 }
