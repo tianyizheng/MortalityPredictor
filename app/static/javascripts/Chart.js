@@ -269,7 +269,7 @@ class Chart{
 			<div class="">End: {2}</div>\
 			<div class="">Mortality Rating: {3}</div>\
 			<div class="contributionContainer"><table></table></div>\
-		<div>'.format(i, d.startDate, d.endDate, d.prediction));
+		<div>'.format(i, d3.timeFormat("%Y-%m-%d")(d.startDate), d3.timeFormat("%Y-%m-%d")(d.endDate), d.prediction));
 
 		
 		var contributionTable = $('.contributionContainer table', html);
@@ -281,7 +281,7 @@ class Chart{
 				<td class="code">{1}</td>\
 				<td class="name">{2}</td>\
 				<td class="score">{3}</td>\
-			</tr>'.format('date', codeData.code, 'name', top[i].contribution));
+			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[top[i].encounterIdx].startDate), codeData.code, 'name', top[i].contribution));
 
 			contributionHtml.on('mouseover', function(event){
 				//console.log(this.contributionData, this.sourceId);
