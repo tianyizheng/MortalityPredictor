@@ -174,7 +174,7 @@ class Chart{
 
 
 		// 0: admission mode, 1: date mode
-		this.axis_mode = 1;
+		this.axis_mode = 0;
 
 		this.max_contributions = 5;
 
