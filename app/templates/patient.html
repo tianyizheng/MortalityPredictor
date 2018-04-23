@@ -127,8 +127,8 @@
                 {% for encounter in encounters %}
                     {
                         'ID': {{ encounter["id"] }}, 
-                        'startDate': new Date('{{ encounter["startDate"].strftime("%Y-%m-%d %H:%M:%S") }}'),
-                        'endDate': new Date('{{ encounter["endDate"].strftime("%Y-%m-%d %H:%M:%S") }}'),
+                        'startDate': new Date('{{ encounter["startDate"] }}'),
+                        'endDate': new Date('{{ encounter["endDate"] }}'),
                         'prediction': {{ incrementalPredictions[loop.index - 1] }},
                         'idx': {{ loop.index - 1}}, 
                     },
