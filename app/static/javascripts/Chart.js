@@ -56,6 +56,7 @@ class Chart{
 		this.margin = {top: 20, right: 20, bottom: 30, left: 50};
 		this.width = +this.svg.attr('width') - this.margin.left - this.margin.right;
 		this.height = +this.svg.attr('height') - this.margin.top - this.margin.bottom;
+		this.g0 = this.svg.append('g').attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 		this.g = this.svg.append('g').attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 		this.g2 = this.svg.append('g').attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 		
@@ -102,6 +103,8 @@ class Chart{
 			.attr('offset', function(d) { return d.offset; })
 			.attr('stop-color', function(d) { return d.color; })
 			.attr('stop-opacity', function(d) { return d.opacity; });
+
+		
 		
 		this.g.append('g')
 			.attr('transform', 'translate(0,' + this.height + ')')
@@ -118,6 +121,16 @@ class Chart{
 			.attr('font-size', '2em')
 			.attr('text-anchor', 'start')
 			.text('Mortality Rate');
+
+		this.g0.append('g')
+			.attr('class', 'grid')
+			.call(
+				d3.axisLeft(this.y)
+				.ticks(5)
+				.tickFormat('')
+				.tickSize(-this.width)
+			)
+			.select('.domain').remove();
 
 		this.g.append('path')
 			.datum(this.data)
@@ -305,8 +318,6 @@ class Chart{
 				<td class="name">{2}</td>\
 				<td class="score">{3}</td>\
 			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[top[i].encounterIdx].startDate), codeData.code, 'name', top[i].contribution));
-
-			console.log(contributionHtml);
 
 			contributionHtml.on('mouseenter', function(event){
 				event.stopPropagation();
