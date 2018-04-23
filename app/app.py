@@ -225,7 +225,7 @@ def getPatientDataAndCodes(patientID):
 
   # TODO: pagination of bundles
   conditionBundle = conditionSearch.perform(smart.server)
-  observationBundle = observationSearch.perform(smart.server)
+  # observationBundle = observationSearch.perform(smart.server)
 
   if conditionBundle.entry:
     # each entry's resource contains one encounter and its codes
@@ -257,35 +257,36 @@ def getPatientDataAndCodes(patientID):
             thisEncounter = {}
             thisEncounter["id"] = encounterId
             if e.resource.onsetPeriod:
-              thisEncounter["startDate"] = e.resource.onsetPeriod.start
-              thisEncounter["endDate"] = e.resource.onsetPeriod.end
+              thisEncounter["startDate"] = e.resource.onsetPeriod.start.date
+              thisEncounter["endDate"] = e.resource.onsetPeriod.end.date
 
             encounterDict[encounterId] = thisEncounter
 
-  if observationBundle.entry:
-    for e in observationBundle.entry:
-      if e.resource.encounter and e.resource.code:
+  # if observationBundle.entry:
+  #   for e in observationBundle.entry:
+  #     if e.resource.encounter and e.resource.code:
 
-        encounterId = e.resource.encounter.reference[10:]
-        codes = e.resource.code.coding
-        value = e.resource.valueQuantity
+  #       encounterId = e.resource.encounter.reference[10:]
+  #       codes = e.resource.code.coding
+  #       value = e.resource.valueQuantity
 
-        if codes and encounterId and value:
+  #       if codes and encounterId and value:
           
-          if encounterId in encounterDict:
+  #         if encounterId in encounterDict:
 
-            thisEncounterObservations = []
-            for c in codes:
-              thisObservation = {}
-              thisObservation["code"] = c.code
-              thisObservation["name"] = c.display
-              thisObservation["units"] = value.unit
-              thisObservation["value"] = value.value
-              thisEncounterObservations.append(thisObservation)
+  #           thisEncounterObservations = []
+  #           for c in codes:
+  #             thisObservation = {}
+  #             thisObservation["code"] = c.code
+  #             thisObservation["name"] = c.display
+  #             thisObservation["units"] = value.unit
+  #             thisObservation["value"] = value.value
+  #             thisEncounterObservations.append(thisObservation)
 
-            encounterDict[encounterId]["observations"] = thisEncounterObservations
+  #           encounterDict[encounterId]["observations"] = thisEncounterObservations
 
-  encounters = [value for key, value in sorted(encounterDict.items(), key=lambda x: x[1]["startDate"])]
+  encounters = [value for key, value in sorted(encounterDict.items(),
+               key=lambda x: x[1]["startDate"])]
 
   return encounters, codeDict
 

@@ -124,11 +124,11 @@
             }
 
             var encounterData = [
-                {% for key in keys %}
+                {% for encounter in encounters %}
                     {
-                        'ID': {{ key }}, 
-                        'startDate': new Date('{{ period[key][0].isostring }}'),
-                        'endDate': new Date('{{ period[key][1].isostring }}'),
+                        'ID': {{ encounter["id"] }}, 
+                        'startDate': new Date('{{ encounter["startDate"].isostring }}'),
+                        'endDate': new Date('{{ encounter["endDate"].isostring }}'),
                         'prediction': {{ incrementalPredictions[loop.index - 1] }},
                         'idx': {{ loop.index - 1}}, 
                     },
