@@ -35,7 +35,7 @@
                         {% for encounter in encounters %}
                             <tr>
                                 <td>{{ encounter["id"] }}</td>
-                                <td>{{ encounter["startDate"].isostring}}<td>
+                                <td>{{ encounter["startDate"].strftime("%Y-%m-%d %H:%M:%S")}}<td>
                                 <td></td>
                                 <td></td>
                             </tr>
@@ -127,8 +127,8 @@
                 {% for encounter in encounters %}
                     {
                         'ID': {{ encounter["id"] }}, 
-                        'startDate': new Date('{{ encounter["startDate"].isostring }}'),
-                        'endDate': new Date('{{ encounter["endDate"].isostring }}'),
+                        'startDate': new Date('{{ encounter["startDate"].strftime("%Y-%m-%d %H:%M:%S") }}'),
+                        'endDate': new Date('{{ encounter["endDate"].strftime("%Y-%m-%d %H:%M:%S") }}'),
                         'prediction': {{ incrementalPredictions[loop.index - 1] }},
                         'idx': {{ loop.index - 1}}, 
                     },
