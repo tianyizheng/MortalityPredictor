@@ -16,7 +16,8 @@
 
 .line {
 	fill: none;
-	stroke: url(#temperature-gradient);
+	stroke: url(#line-gradient);
+	fill: url(#temperature-gradient);
 	stroke-width: 1.5px;
 }
 
@@ -30,4 +31,8 @@
 
 .contributionContainer tr.contribution td.score{
 	padding-right: 0;
+}
+
+.tick text {
+	font-size: 1.2em;
 }

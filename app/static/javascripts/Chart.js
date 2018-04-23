@@ -80,26 +80,43 @@ class Chart{
 			.attr('x2', 0).attr('y2', this.y(1))
 		.selectAll('stop')
 			.data([
-				{offset: '0%', color: 'steelblue'},
-				{offset: '50%', color: 'gray'},
-				{offset: '100%', color: 'red'}
+				{offset: '0%', color: 'red', opacity: 0},
+				{offset: '100%', color: 'red', opacity: 1}
 			])
 		.enter().append('stop')
 			.attr('offset', function(d) { return d.offset; })
-			.attr('stop-color', function(d) { return d.color; });
+			.attr('stop-color', function(d) { return d.color; })
+			.attr('stop-opacity', function(d) { return d.opacity; });
+
+		this.svg.append('linearGradient')
+			.attr('id', 'line-gradient')
+			.attr('gradientUnits', 'userSpaceOnUse')
+			.attr('x1', 0).attr('y1', this.y(0))
+			.attr('x2', 0).attr('y2', this.y(1))
+		.selectAll('stop')
+			.data([
+				{offset: '0%', color: 'grey', opacity: 0.5},
+				{offset: '100%', color: 'red', opacity: 1}
+			])
+		.enter().append('stop')
+			.attr('offset', function(d) { return d.offset; })
+			.attr('stop-color', function(d) { return d.color; })
+			.attr('stop-opacity', function(d) { return d.opacity; });
 		
 		this.g.append('g')
 			.attr('transform', 'translate(0,' + this.height + ')')
 			.attr('class', 'x-axis')
 
 		this.g.append('g')
-			.call(d3.axisLeft(this.y))
+			.call(d3.axisLeft(this.y).tickFormat(function(d){ return Math.round(d * 100); }))
 		.append('text')
 			.attr('fill', '#000')
-			.attr('transform', 'rotate(-90)')
-			.attr('y', 6)
-			.attr('dy', '0.71em')
-			.attr('text-anchor', 'end')
+			//.attr('transform', 'rotate(-90)')
+			.attr('x', 5)
+			.attr('y', 0)
+			.attr('dy', '1em')
+			.attr('font-size', '2em')
+			.attr('text-anchor', 'start')
 			.text('Mortality Rate');
 
 		this.g.append('path')
@@ -140,25 +157,9 @@ class Chart{
 			.attr('stroke-width', 1.5);
 
 		this.g2.append("svg:path")
-			.attr("d", function(d){ return d3.symbol().type(d3.symbolTriangle)(); })
+			.attr("d", function(d){ return d3.symbol().type(d3.symbolTriangle).size(40)(); })
 			.attr('class', 'arrow-head')
 			.attr('display', 'none');
-
-		var defs = this.svg.append("defs")
-
-		defs.append("marker")
-			.attr("id", "arrow")
-				.attr("viewBox", "0 -5 10 10")
-				.attr("refX", 5)
-				.attr("refY", 0)
-				.attr("markerWidth", 8)
-				.attr("markerHeight", 8)
-				.attr('fill', 'steelblue')
-				.attr("orient", "auto")
-			.append("path")
-				.attr("d", "M0,-5L10,0L0,5")
-				.attr("class","arrowHead");
-
 
 		this.interact = this.svg.append('g').attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')')
 			.append('rect')
@@ -175,7 +176,8 @@ class Chart{
 
 						// place a dot on the highlighted point
 						self.g.select('circle.highlight-circle')
-							.attr('stroke', 'url(#temperature-gradient)')
+							//.attr('stroke', 'url(#temperature-gradient)')
+							.attr('stroke', 'grey')
 							.attr('cx', self.x(self.getX(closest.data, closest.idx)))
 							.attr('cy', self.y(self.getY(closest.data, closest.idx)))
 					}
@@ -205,7 +207,7 @@ class Chart{
 
 	getX(d, i){
 		if(this.axis_mode === 0){
-			return i;
+			return d.idx;
 		}
 		else{
 			return d.startDate;
@@ -320,10 +322,10 @@ class Chart{
 
 				if(this.sourceId !== this.contributionData.encounterIdx){
 					// draw source circle
-					self.g.select('circle.source-circle')
-						.attr('fill', 'steelblue')
-						.attr('cx', sourceX)
-						.attr('cy', sourceY)
+					//self.g.select('circle.source-circle')
+					//	.attr('fill', 'steelblue')
+					//	.attr('cx', sourceX)
+					//	.attr('cy', sourceY)
 
 					var midpoints = calcAngledPoint(sourceX, sourceY, targetX, targetY, Math.PI / 2, 1);
 
@@ -331,7 +333,7 @@ class Chart{
 					var y_ = midpoints[1];
 
 					var arrow = self.g2.select('path.contribution-arrow')
-						.attr('stroke', 'steelblue')
+						.attr('stroke', 'url(#line-gradient')
 						.attr('display', 'show')
 						.attr('d', 'M {0},{1} Q {2},{3} {4},{5}'.format(sourceX, sourceY, x_, y_, targetX, targetY));
 
@@ -340,7 +342,7 @@ class Chart{
 
 					self.g2.select('path.arrow-head')
 						.attr('display', 'show')
-						.attr('fill', 'steelblue')
+						.attr('fill', 'url(#line-gradient')
 						.transition()
 							.duration(transition_duration)
 							.attrTween("transform", translateAlong(arrow.node()))
@@ -439,9 +441,20 @@ class Chart{
 				);
 		}
 
+		var lineData = [];
+		var first = Object.assign({}, this.data[0]);
+		var last = Object.assign({}, this.data[this.data.length - 1]);
+
+		first.prediction = 0;
+		last.prediction = 0;
+
+		lineData.push(first);
+		lineData.push(...this.data);
+		lineData.push(last);
+
 
 		var path = this.g.select('path.line')
-			.datum(this.data)
+			.datum(lineData)
 			.attr('d', this.line);
 
 //		var totalLength = path.node().getTotalLength();
@@ -461,9 +474,10 @@ class Chart{
 			.data(this.data)
 			.attr('cx', function(d, i){ return self.x(self.getX(d, i)); })
 			.attr('cy', function(d, i){ return self.y(self.getY(d, i)); })
-			.attr('r', 8)
+			.attr('r', 5)
 			.attr('fill', 'white')
-			.attr('stroke', 'url(#temperature-gradient)')
+			//.attr('stroke', 'url(#temperature-gradient)')
+			.attr('stroke', 'grey')
 			.attr('stroke-width', 1.5);
 
 		this.g.selectAll('circle.line-corners')

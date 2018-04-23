@@ -129,6 +129,7 @@
                         'startDate': new Date('{{ period[key][0].isostring }}'),
                         'endDate': new Date('{{ period[key][1].isostring }}'),
                         'prediction': {{ incrementalPredictions[loop.index - 1] }},
+                        'idx': {{ loop.index - 1}}, 
                     },
                 {% endfor %}
             ];
