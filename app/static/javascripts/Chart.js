@@ -28,6 +28,21 @@ function calcAngledPoint(sourceX, sourceY, targetX, targetY, angle, scale){
 	return [x_, y_];
 }
 
+// Returns an attrTween for translating along the specified path element.
+function translateAlong(path) {
+	var l = path.getTotalLength();
+	var ps = path.getPointAtLength(0);
+	var pe = path.getPointAtLength(l);
+	var angl = Math.atan2(pe.y - ps.y, pe.x - ps.x) * (180 / Math.PI) - 90;
+	var rot_tran = "rotate(" + angl + ")";
+	return function(d, i, a) {
+		return function(t) {
+			var p = path.getPointAtLength(t * l);
+			return "translate(" + p.x + "," + p.y + ") " + rot_tran;
+		};
+	};
+}
+
 class Chart{
 	constructor(data, codes, element, infoContainer){
 		console.log('connecting the chart 2');
@@ -42,6 +57,7 @@ class Chart{
 		this.width = +this.svg.attr('width') - this.margin.left - this.margin.right;
 		this.height = +this.svg.attr('height') - this.margin.top - this.margin.bottom;
 		this.g = this.svg.append('g').attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
+		this.g2 = this.svg.append('g').attr('transform', 'translate(' + this.margin.left + ',' + this.margin.top + ')');
 		
 		this.x = d3.scaleLinear()
 			.rangeRound([0, this.width]);
@@ -116,12 +132,17 @@ class Chart{
 			.attr('stroke-width', 1.5)
 			.attr('r', 10);
 
-		this.g.append('path')
+		this.g2.append('path')
 			.attr('class', 'contribution-arrow')
 			.attr('fill', 'none')
 			.attr('stroke-linejoin', 'round')
 			.attr('stroke-linecap', 'round')
 			.attr('stroke-width', 1.5);
+
+		this.g2.append("svg:path")
+			.attr("d", function(d){ return d3.symbol().type(d3.symbolTriangle)(); })
+			.attr('class', 'arrow-head')
+			.attr('display', 'none');
 
 		var defs = this.svg.append("defs")
 
@@ -283,8 +304,10 @@ class Chart{
 				<td class="score">{3}</td>\
 			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[top[i].encounterIdx].startDate), codeData.code, 'name', top[i].contribution));
 
-			contributionHtml.on('mouseover', function(event){
-				//console.log(this.contributionData, this.sourceId);
+			console.log(contributionHtml);
+
+			contributionHtml.on('mouseenter', function(event){
+				event.stopPropagation();
 
 				// draw a circle on the target
 				var sourceData = self.data[this.sourceId];
@@ -294,9 +317,6 @@ class Chart{
 				var encounterData = self.data[this.contributionData.encounterIdx];
 				var targetX = self.x(self.getX(encounterData, this.contributionData.encounterIdx));
 				var targetY = self.y(self.getY(encounterData, this.contributionData.encounterIdx));
-
-				
-
 
 				if(this.sourceId !== this.contributionData.encounterIdx){
 					// draw source circle
@@ -310,10 +330,33 @@ class Chart{
 					var x_ = midpoints[0];
 					var y_ = midpoints[1];
 
-					self.g.select('path.contribution-arrow')
+					var arrow = self.g2.select('path.contribution-arrow')
 						.attr('stroke', 'steelblue')
 						.attr('display', 'show')
 						.attr('d', 'M {0},{1} Q {2},{3} {4},{5}'.format(sourceX, sourceY, x_, y_, targetX, targetY));
+
+
+					var transition_duration = 500;
+
+					self.g2.select('path.arrow-head')
+						.attr('display', 'show')
+						.attr('fill', 'steelblue')
+						.transition()
+							.duration(transition_duration)
+							.attrTween("transform", translateAlong(arrow.node()))
+
+					var totalLength = arrow.node().getTotalLength();
+
+					arrow
+						.attr("stroke-dasharray", totalLength + " " + totalLength)
+						//.attr("stroke-dashoffset", totalLength)
+					.transition()
+						.duration(transition_duration)
+						.attrTween('stroke-dashoffset', function() {
+							return function(t){
+								return (1 - t) * totalLength;
+							}
+						});
 
 
 					// draw arrow from source to target
@@ -329,7 +372,10 @@ class Chart{
 
 
 			}.bind({contributionData: top[i], sourceId: parseInt(data_index)}))
-			.on('mouseout', function(event){
+			.on('mouseleave', function(event){
+
+				event.stopPropagation();
+
 				self.g.select('circle.source-circle')
 					.attr('fill', 'none');
 
@@ -337,8 +383,13 @@ class Chart{
 					.attr('fill', 'none');
 
 
-				self.g.select('path.contribution-arrow')
+				self.g2.select('path.contribution-arrow')
 					.attr('display', 'none')
+
+				self.g2.select('path.contribution-arrow').transition();
+
+				self.g2.select('path.arrow-head')
+					.attr('display', 'none');
 			});
 
 			contributionTable.append(contributionHtml);
@@ -389,9 +440,35 @@ class Chart{
 		}
 
 
-		this.g.select('path.line')
+		var path = this.g.select('path.line')
 			.datum(this.data)
 			.attr('d', this.line);
+
+//		var totalLength = path.node().getTotalLength();
+//
+//		path
+//			.attr("stroke-dasharray", totalLength + " " + totalLength)
+//			.attr("stroke-dashoffset", totalLength)
+//		.transition()
+//			.attr("stroke-dashoffset", 0);
+
+		this.g.selectAll('circle.line-corners')
+			.data(this.data)
+		.enter().append('circle')
+			.attr('class', 'line-corners');
+			
+		this.g.selectAll('circle.line-corners')
+			.data(this.data)
+			.attr('cx', function(d, i){ return self.x(self.getX(d, i)); })
+			.attr('cy', function(d, i){ return self.y(self.getY(d, i)); })
+			.attr('r', 8)
+			.attr('fill', 'white')
+			.attr('stroke', 'url(#temperature-gradient)')
+			.attr('stroke-width', 1.5);
+
+		this.g.selectAll('circle.line-corners')
+			.data(this.data)
+		.exit().remove();
 
 
 	}

@@ -31,7 +31,3 @@
 .contributionContainer tr.contribution td.score{
 	padding-right: 0;
 }
-
-path.contribution-arrow {
-	marker-end: url(#arrow);
-}
