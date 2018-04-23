@@ -61,67 +61,17 @@
         <script src="/static/javascripts/Chart.js"></script>
         <script type="text/javascript">
 
-            /*
-            two structs:
-            encounters, and codes
-
-            var encounters = [
-                {
-                    id: String
-                    startDate: Date,
-                    endDate: Date,
-                    prediction: Number,
-                    contributions: [
-                        [Number, Number, ...],
-                    ],
-                    observations: [
+            var codes = {
+                {% for key in codeDict %}
+                    '{{ key }}': [
+                    {% for data in codeDict[key] %}
                         {
-                            code: String,
-                            name: String,
-                            units: String,
-                            value: Number,
-                        }
-                    ],
-                }
-            ];
-
-            var codes = [
-                {
-                    code: String,
-                    name: String,
-                }
-            ];
-
-            */
-
-            var contribution_shape = [
-                {% for key in keys %}
-                    [ {% for code, score in codes[key] %}0,{% endfor %} ],
-                {% endfor %}
-            ];
-
-            var codes = [
-                {% for key in keys %}
-                    [ {% for code, score in codes[key] %}
-                        {
-                            'code': '{{ code }}',
-                            'name': '',
+                            'code': '{{ data["code"] }}',
+                            'name': '{{ data["name"] }}',
                         },
                     {% endfor %} ],
                 {% endfor %}
-            ];
-
-            function makeRandomContributions(shape){
-                var ret = [];
-                for(var i = 0; i < shape.length; i++){
-                    var encounter = [];
-                    for(var j = 0; j < shape[i].length; j++){
-                        encounter.push(Math.random() * 2 - 1);
-                    }
-                    ret.push(encounter);
-                }
-                return ret;
-            }
+            };
 
             var encounterData = [
                 {% for encounter in encounters %}
@@ -131,13 +81,10 @@
                         'endDate': new Date('{{ encounter["endDate"] }}'),
                         'prediction': {{ incrementalPredictions[loop.index - 1] }},
                         'idx': {{ loop.index - 1}}, 
+                        'contributions': {{ incrementalContributions[loop.index - 1] }}
                     },
                 {% endfor %}
             ];
-
-            for(var i = 0; i < encounterData.length; i++){
-                encounterData[i].contributions = makeRandomContributions(contribution_shape.slice(0, i + 1));
-            }
 
             var svg = $('#mortality-chart');
             var infoContainer = $('#mortality-info')

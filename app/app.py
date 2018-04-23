@@ -143,7 +143,7 @@ def patient(patientID):
     print(e)
 
   return render_template('patient.html', patientID = patientID,
-    mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions,
+    mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions, incrementalContributions = incremental_contributions,
     errors = errors, codes=codesAndScores, keys=keys, codeDict = icdCodes, encounters = encounters)
 
 
