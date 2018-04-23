@@ -26,20 +26,20 @@
                     <thead>
                         <tr>
                             <th>encounter</th>
-                            <th>period</th>
+                            <th>startDate</th>
                             <th>icd Code</th>
                             <th>contribution score</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for key in keys %}
+                        {% for encounter in encounters %}
                             <tr>
-                                <td>{{ key }}</td>
-                                <td>{{ period[key][0].isostring, period[key][1].isostring }}<td>
+                                <td>{{ encounter["id"] }}</td>
+                                <td>{{ encounter["startDate"].isostring}}<td>
                                 <td></td>
                                 <td></td>
                             </tr>
-                            {% for code, score in codes[key] %}
+                            {% for code, score in codes[encounter["id"]] %}
                                 <tr>
                                     <td></td>
                                     <td></td>
@@ -67,6 +67,7 @@
 
             var encounters = [
                 {
+                    id: String
                     startDate: Date,
                     endDate: Date,
                     prediction: Number,

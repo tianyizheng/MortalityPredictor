@@ -11,6 +11,7 @@ from flask_socketio import SocketIO, emit
 from flask import make_response
 from functools import wraps, update_wrapper
 from datetime import datetime
+import operator
 
 from MortalityPredictor import MortalityPredictor
 
@@ -30,6 +31,7 @@ cache = redis.Redis(host='redis', port=6379)
 
 import fhirclient.models.patient as p
 import fhirclient.models.condition as conditions
+import fhirclient.models.observation as observation
 
 from dbmodels import db, Death, Concept, ConditionOccurence
 db.init_app(app)
@@ -40,7 +42,7 @@ model = MortalityPredictor('models/mimic3.model.npz', 'models/mimic3.types')
 @app.after_request
 def set_response_headers(response):
   ''' mainly for not to cache '''
-  print('hello')
+
   response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
   response.headers['Pragma'] = 'no-cache'
   response.headers['Expires'] = '0'
@@ -102,28 +104,22 @@ def patient(patientID):
   ''' handles individual patient's list of code '''
 
   errors = []
-  keys = []
   prediction = []
   incrementalPredictions = []
-  # icdCodes kept in dictionary
-  # with each encounter having a lsit of codes
-  icdCodes = {}
-
-  icdCodes = conceptSearch(patientID)
 
   try:
     # get icdCodes form patientID
-    icdCodes = conceptSearch(patientID)
+    encounters, icdCodes = getPatientDataAndCodes(patientID)
     codesAndScores = {}
 
-    # get sorted keys from dictionary
-    keys = sorted(icdCodes[0])
-
     encounterData = []
+    keys = []
 
-    for encounterId in keys:
-        diagnoses = list(icdCodes[0][encounterId])
-        encounterData.append(diagnoses)
+    for encounter in encounters:
+      encounterId = encounter["id"]
+      keys.append(encounterId)
+      diagnoses = [codeDict["code"] for codeDict in icdCodes[encounterId]]
+      encounterData.append(diagnoses)
 
     rounding_factor = 10000.0
     
@@ -148,7 +144,7 @@ def patient(patientID):
 
   return render_template('patient.html', patientID = patientID,
     mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions,
-    errors = errors, codes=codesAndScores, keys=keys, period=icdCodes[1])
+    errors = errors, codes=codesAndScores, keys=keys, codeDict = icdCodes, encounters = encounters)
 
 
 @app.route('/chart2', methods=['GET'])
@@ -178,73 +174,123 @@ def handle_message(message):
   emit('patient data', data)
 
 
-def icdSearch(snowmed):
+def icdToSnomed(snowmed):
   ''' Translates given snowmed code into icd9 code  '''
 
   # query the concept table to get corresponding conceptID to SNOWMED code
-
-  icd = ConditionOccurence.query.join(Concept, Concept.concept_id==ConditionOccurence.condition_concept_id) \
+  icdCodeAndName = ConditionOccurence.query.join(Concept, Concept.concept_id==ConditionOccurence.condition_concept_id) \
+        .add_columns(Concept.concept_name) \
         .filter(Concept.concept_code==snowmed) \
-        .first().condition_source_value
+        .first()
 
-  return icd
+  icdDict = {}
+  icdDict["code"] = icdCodeAndName[0].condition_source_value
+  icdDict["name"] = icdCodeAndName[1]
 
-def conceptSearch(patientID):
+  return icdDict
 
-  ''' given patientID, returns a dictionary of icd9Codes
-      ordered by encounters '''
+def getPatientDataAndCodes(patientID):
 
-  encounterCodesDict = {}
-  encounterPeriodDict = {}
+  ''' given patientID, returns encounters and codes
 
-  result = []
+  encounters = [
+                {
+                    startDate: Date,
+                    endDate: Date,
+                    prediction: Number,
+                    contributions: [
+                        [Number, Number, ...],
+                    ],
+                    observations: [
+                        {
+                            code: String,
+                            name: String,
+                            units: String,
+                            value: Number,
+                        }
+                    ],
+                }
+            ];
+
+  '''
+
+  encounterDict = {}
+  codeDict = {}
+
+  result = ()
   # search for patient's conditions
-  search = conditions.Condition.where(struct={'patient': patientID})
+  
+  conditionSearch = conditions.Condition.where(struct={'patient': patientID})
+  observationSearch = observation.Observation.where(struct={'patient': patientID})
 
   # TODO: pagination of bundles
-  bundle = search.perform(smart.server)
+  conditionBundle = conditionSearch.perform(smart.server)
+  observationBundle = observationSearch.perform(smart.server)
 
-  if bundle.entry:
+  if conditionBundle.entry:
     # each entry's resource contains one encounter and its codes
-    for e in bundle.entry:
-
-
+    for e in conditionBundle.entry:
       if e.resource.encounter and e.resource.code:
 
         # get the encounterID and code list for an individual encounter
-        encounter = e.resource.encounter.reference[10:]
+        encounterId = e.resource.encounter.reference[10:]
         codes = e.resource.code.coding
-        period = [e.resource.onsetPeriod.start, e.resource.onsetPeriod.end]
 
-        if codes and encounter:
+        if codes and encounterId:
 
           # if encounter already exist
-          if encounter in encounterCodesDict:
-
+          if encounterId in encounterDict:
             for c in codes:
 
             # append new code to collection of existing codes
-              if c.code not in encounterCodesDict[encounter]:
+              if c.code not in codeDict[encounterId]:
 
                 # translates snowmed to icd9
-                encounterCodesDict[encounter].add(icdSearch(c.code))
+                codeDict[encounterId].append(icdToSnomed(c.code))
 
           else:
-
-            # creat new set collection
-            # set ensures no duplicates
-            codeList = set()
+            codeList = []
             for c in codes:
-              codeList.add(icdSearch(c.code))
-            encounterCodesDict[encounter] = codeList
-            if period:
-              encounterPeriodDict[encounter] = period
-  result = [encounterCodesDict, encounterPeriodDict]
+              codeList.append(icdToSnomed(c.code))
+            codeDict[encounterId] = codeList
 
+            thisEncounter = {}
+            thisEncounter["id"] = encounterId
+            if e.resource.onsetPeriod:
+              thisEncounter["startDate"] = e.resource.onsetPeriod.start
+              thisEncounter["endDate"] = e.resource.onsetPeriod.end
 
-  return(result)
+            encounterDict[encounterId] = thisEncounter
+
+  if observationBundle.entry:
+    for e in observationBundle.entry:
+      if e.resource.encounter and e.resource.code:
+
+        encounterId = e.resource.encounter.reference[10:]
+        codes = e.resource.code.coding
+        value = e.resource.valueQuantity
+
+        if codes and encounterId and value:
+          
+          if encounterId in encounterDict:
+
+            thisEncounterObservations = []
+            for c in codes:
+              thisObservation = {}
+              thisObservation["code"] = c.code
+              thisObservation["name"] = c.display
+              thisObservation["units"] = value.unit
+              thisObservation["value"] = value.value
+              thisEncounterObservations.append(thisObservation)
+
+            encounterDict[encounterId]["observations"] = thisEncounterObservations
+
+  encounters = [value for key, value in sorted(encounterDict.items(), key=lambda x: x[1]["startDate"])]
+
+  return encounters, codeDict
 
 
 if __name__ == "__main__":
   # app.run(host="0.0.0.0")
   socketio.run(app, host="0.0.0.0")
+# use_reloader=False

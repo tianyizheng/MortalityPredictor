@@ -35,7 +35,7 @@ class Concept(db.Model):
   concept_id = db.Column(db.Integer, primary_key=True, nullable=False)
   concept_code = db.Column(db.String(50))
   vocabulary_id = db.Column(db.String(20))
-
+  concept_name = db.Column(db.String(255))
   def __init__(self, concept_id, concept_code, vocabulary_id):
     self.concept_id = concept_id
     self.concept_code = concept_code
@@ -48,4 +48,3 @@ class ConditionOccurence(db.Model):
   condition_concept_id = db.Column(db.Integer, nullable=False)
   condition_source_value = db.Column(db.String(50))
   condition_source_concept_id = db.Column(db.Integer)
-
