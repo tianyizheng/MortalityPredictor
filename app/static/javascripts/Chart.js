@@ -278,6 +278,7 @@ class Chart{
 				if(top.length < this.max_contributions || c > min_top){
 					top.push({
 						'encounterIdx': i,
+						'encounterId': this.data[i].ID,
 						'codeIdx': j,
 						'contribution': c,
 					});
@@ -311,13 +312,13 @@ class Chart{
 		var contributionTable = $('.contributionContainer table', html);
 
 		for(var i = 0; i < top.length; i++){
-			var codeData = this.codes[top[i].encounterIdx][top[i].codeIdx];
+			var codeData = this.codes[top[i].encounterId][top[i].codeIdx];
 			var contributionHtml = $('<tr class="contribution">\
 				<td class="date">{0}</td>\
 				<td class="code">{1}</td>\
 				<td class="name">{2}</td>\
 				<td class="score">{3}</td>\
-			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[top[i].encounterIdx].startDate), codeData.code, 'name', top[i].contribution));
+			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[top[i].encounterIdx].startDate), codeData.code, codeData.name, top[i].contribution));
 
 			contributionHtml.on('mouseenter', function(event){
 				event.stopPropagation();
