@@ -1,7 +1,12 @@
+#content {
+	max-width: 1300px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
 #chart-container{
-	width: calc(100% - 20px);
+	width: 1300px;
 	display: flex;
-	margin-left: 10px;
 	margin-right: 10px;
 }
 
@@ -14,6 +19,8 @@
 	padding: 10px;
 	box-sizing: border-box;
 	flex: 1;
+	margin-left: 24px;
+	box-shadow: 2px 2px 7px #848484;
 }
 
 .line {
@@ -25,18 +32,23 @@
 
 .contributionContainer tr.contribution td{
 	padding: 4px;
+	border: 1px solid #676767;
 }
 
-.contributionContainer tr.contribution td.date{
-	padding-left: 0;
-	min-width: 80px;
-}
 
 .contributionContainer tr.contribution td.code{
 	min-width: 70px;
+	padding-left: 10px;
+	padding-right: 5px;
 }
 
 .contributionContainer tr.contribution td.score{
+	padding-left: 5px;
+	padding-right: 5px;
+	text-align: center;
+}
+
+.contributionContainer tr.contribution td.name{
 	padding-right: 0;
 }
 
@@ -51,4 +63,47 @@
 .grid line{
 	stroke: #c7c7c7;
 	stroke-dasharray: 8,8;
+}
+
+.contributionButton {
+	background: #8fd8ff;
+	border: 1px solid #676767;
+	border-radius: 7px;
+	box-shadow: 2px 2px 2px #848484;
+	margin: 7px;
+}
+
+
+.contributionButton:disabled {
+	background: #d4d4d4;
+}
+
+.observationTable {
+	width: 100%;
+}
+
+.observationTable td {
+	padding-left: 5px;
+	padding-right: 5px;
+	border: 1px solid #676767;
+}
+
+#observation-info {
+	box-shadow: 2px 2px 7px #848484;
+	margin-top: 18px;
+	min-height: 172px;
+	padding: 10px;
+}
+
+.observationTable td.code {
+	min-width: 50px;
+}
+.observationTable td.name {
+	min-width: 400px;
+}
+.observationTable td.value {
+	min-width: 50px;
+}
+.observationTable td.units {
+	min-width: 50px;
 }

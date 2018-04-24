@@ -11,10 +11,11 @@
     <body>
         <div id="content">
             <h1>Patient: {{ patientID }}</h1>
-            <h2>Mortality Prediction: {{ mortalityPrediction }}</h2>
+            <h2>Mortality Risk: {{ mortalityPrediction }}</h2>
             <div id="chart-container">
                 <div class="svg-container">
                     <svg id="mortality-chart" width="800" height="500"></svg>
+                    <div id="observation-info"></div>
                 </div>
                 <div id="mortality-info"></div>
             </div>
@@ -30,8 +31,11 @@
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
         integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous">
         </script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.js"></script>
         <script src="/static/javascripts/Chart.js"></script>
         <script type="text/javascript">
+
+            var socket = io();
 
             var codes = {
                 {% for key in codeDict %}
@@ -60,8 +64,21 @@
 
             var svg = $('#mortality-chart');
             var infoContainer = $('#mortality-info')
+            var observationContainer = $('#observation-info')
             
-            var chart = new Chart(encounterData, codes, svg, infoContainer);
+            var chart = new Chart(encounterData, codes, svg, infoContainer, observationContainer);
+
+
+            socket.on('get observations', function(message){
+                chart.setObservationData(message.observationData);
+            });
+
+
+            $(document).ready(function(){
+
+                socket.emit('get observations', {patientId: {{ patientID }} });
+
+            });
             
         
         </script>

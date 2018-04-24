@@ -164,6 +164,34 @@ def handle_message(message):
   emit('patient data', data)
 
 
+@socketio.on('get observations', namespace='/')
+def get_observations(message):
+  observationSearch = observation.Observation.where(struct={'patient': str(message['patientId'])})
+  observationBundle = observationSearch.perform(smart.server)
+  observationData = {}
+  if observationBundle.entry:
+    for e in observationBundle.entry:
+      if e.resource.encounter and e.resource.code:
+
+        encounterId = e.resource.encounter.reference[10:]
+        codes = e.resource.code.coding
+        value = e.resource.valueQuantity
+
+        if codes and encounterId and value:
+
+          thisEncounterObservations = []
+          for c in codes:
+            thisObservation = {}
+            thisObservation["system"] = c.system
+            thisObservation["code"] = c.code
+            thisObservation["name"] = c.display
+            thisObservation["units"] = value.unit
+            thisObservation["value"] = value.value
+            thisEncounterObservations.append(thisObservation)
+
+            observationData[encounterId] = thisEncounterObservations
+  emit('get observations', {'observationData': observationData})
+
 def icdToSnomed(snowmed):
   ''' Translates given snowmed code into icd9 code  '''
 

@@ -44,14 +44,16 @@ function translateAlong(path) {
 }
 
 class Chart{
-	constructor(data, codes, element, infoContainer){
+	constructor(data, codes, element, infoContainer, observationContainer){
 		console.log('connecting the chart 2');
 		var self = this;
 
 		this.data = data;
 		this.codes = codes;
+		this.observationData = null;
 		this.svg = d3.select(element[0]);
 		this.infoContainer = infoContainer;
+		this.observationContainer = observationContainer;
 
 		this.margin = {top: 20, right: 20, bottom: 30, left: 50};
 		this.width = +this.svg.attr('width') - this.margin.left - this.margin.right;
@@ -120,7 +122,7 @@ class Chart{
 			.attr('dy', '1em')
 			.attr('font-size', '2em')
 			.attr('text-anchor', 'start')
-			.text('Mortality Rate');
+			.text('Mortality Risk');
 
 		this.g0.append('g')
 			.attr('class', 'grid')
@@ -225,6 +227,9 @@ class Chart{
 
 					if(self.closestPoint !== null){
 						self.updateInfo(self.closestPoint.data, self.closestPoint.idx);
+						self.max_contributions = 8;
+						self.drawContributionInfo();
+						self.drawObservationInfo();
 
 
 						// display pulse on the target point
@@ -247,8 +252,18 @@ class Chart{
 		this.closestPoint = null;
 		this.currentContributionArrow = null;
 
+		this.infoData = null;
+
 
 		this.draw();
+	}
+
+	setObservationData(data){
+		this.observationData = data;
+
+		// update side bar if necessary
+		//this.drawContributionInfo();
+		this.drawObservationInfo();
 	}
 
 	pulse(x, y){
@@ -416,11 +431,20 @@ class Chart{
 			.attr('display', 'none');
 	}
 
-
 	updateInfo(d, data_index){
+		this.infoData = {d: d, index: data_index};
+	}
+
+
+	drawContributionInfo(){
 		var self = this;
 
-		//console.log(d);
+		if(this.infoData === null){
+			return;
+		}
+
+		var d = this.infoData.d;
+		var data_index = this.infoData.index;
 
 		// find top n contributions from the entire 2D array
 		var contributionData = [];
@@ -438,6 +462,8 @@ class Chart{
 			}
 		}
 
+		var num_contributions = contributionData.length;
+
 		contributionData.sort(function(a, b){
 			return b.contribution - a.contribution;
 		});
@@ -446,26 +472,59 @@ class Chart{
 			contributionData.splice(this.max_contributions, contributionData.length - (this.max_contributions + this.min_contributions));
 		}
 
-		//console.log(top, min_top);
-
 		var html = $('<div class="">\
 			<div class="">Admission {0}</div>\
 			<div class="">{1} to {2}</div>\
-			<div class="">Mortality Rating: {3}</div>\
-			<div class="contributionContainer"><table class="contributionTable"></table></div>\
+			<div class="">Mortality Risk: {3}</div>\
+			<div class="contributionContainer">\
+				<table class="contributionTable">\
+					<tr class="contribution">\
+						<td class="score">Contribution</td>\
+						<td class="code">ICD-9</td>\
+						<td class="name">Name</td>\
+					</tr>\
+				</table>\
+				<div class="contributionButtonContainer">\
+					<button class="lessButton contributionButton">Show Less</button>\
+					<button class="moreButton contributionButton">Show More</button>\
+				</div>\
+			</div>\
 		<div>'.format(i, d3.timeFormat("%m-%d-%Y")(d.startDate), d3.timeFormat("%m-%d-%Y")(d.endDate), d.prediction));
 
+		if(this.max_contributions <= 8	){
+			$('button.lessButton', html).attr('disabled', true);
+		}
+		if(this.max_contributions >= num_contributions){
+			$('button.moreButton', html).attr('disabled', true);
+		}
+
+
+		$('button.lessButton', html).on('click', function(event){
+			console.log('less clicked');
+			self.max_contributions = 8;
+			self.drawContributionInfo();
+		});
+
+		$('button.moreButton', html).on('click', function(event){
+			console.log('more clicked');
+			self.max_contributions = Math.min(self.max_contributions + 5, num_contributions);
+			self.drawContributionInfo();
+		});
 		
 		var contributionTable = $('.contributionContainer table', html);
 
 		for(var i = 0; i < contributionData.length; i++){
 			var codeData = this.codes[contributionData[i].encounterId][contributionData[i].codeIdx];
 			var contributionHtml = $('<tr class="contribution">\
-				<td class="date">{0}</td>\
+				<td class="score">{0}</td>\
 				<td class="code">{1}</td>\
 				<td class="name">{2}</td>\
-				<td class="score">{3}</td>\
-			</tr>'.format(d3.timeFormat("%m-%d-%Y")(this.data[contributionData[i].encounterIdx].startDate), codeData.code, codeData.name, contributionData[i].contribution));
+			</tr>'.format(contributionData[i].contribution, codeData.code, codeData.name));
+
+			$('.score', contributionHtml).css({
+				'background-color': d3.interpolateRdBu(-contributionData[i].contribution * 0.5 + 0.5),
+				'color': Math.abs(contributionData[i].contribution) > 0.5 ? 'white' : 'black',
+			});
 
 			contributionHtml.on('mouseenter', function(event){
 				event.stopPropagation();
@@ -487,6 +546,53 @@ class Chart{
 		}
 
 		this.infoContainer.html(html);
+	}
+
+	drawObservationInfo(){
+		var self = this;
+
+		if(this.infoData === null){
+			return;
+		}
+
+		var d = this.infoData.d;
+		var data_index = this.infoData.index;
+
+		var observationHtml = $('<table class="observationTable"></table>');
+
+		if(this.observationData === null){
+			observationHtml = 'Loading Observation Data';
+		}
+		else{
+			var encounterId = this.data[parseInt(data_index)].ID;
+
+			var obsData = this.observationData[encounterId];
+			console.log(obsData);
+
+			observationHtml.append('<tr>\
+				<td class="code">Loinc</td>\
+				<td class="name">Name</td>\
+				<td class="value">Value</td>\
+				<td class="units">Units</td>\
+			</tr>');
+
+			for(var i = 0; obsData !== undefined && i < obsData.length; i++){
+
+				if(obsData[i].system !== 'http://loinc.org'){
+					// only display loinc codes for now
+					continue;
+				}
+
+				observationHtml.append('<tr>\
+					<td class="code">{0}</td>\
+					<td class="name">{1}</td>\
+					<td class="value">{2}</td>\
+					<td class="units">{3}</td>\
+				</tr>'.format(obsData[i].code, obsData[i].name, obsData[i].value, obsData[i].units !== 'No matching concept' ? obsData[i].units : ''));
+			}
+		}
+
+		this.observationContainer.html(observationHtml);
 	}
 
 	draw(){
