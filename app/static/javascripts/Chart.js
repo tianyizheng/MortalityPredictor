@@ -83,8 +83,8 @@ class Chart{
 			.attr('x2', 0).attr('y2', this.y(1))
 		.selectAll('stop')
 			.data([
-				{offset: '0%', color: 'red', opacity: 0},
-				{offset: '100%', color: 'red', opacity: 1}
+				{offset: '0%', color: '#a80000', opacity: 0},
+				{offset: '100%', color: '#a80000', opacity: 1}
 			])
 		.enter().append('stop')
 			.attr('offset', function(d) { return d.offset; })
@@ -99,7 +99,7 @@ class Chart{
 		.selectAll('stop')
 			.data([
 				{offset: '0%', color: 'grey', opacity: 0.5},
-				{offset: '100%', color: 'red', opacity: 1}
+				{offset: '100%', color: '#800823', opacity: 1}
 			])
 		.enter().append('stop')
 			.attr('offset', function(d) { return d.offset; })
