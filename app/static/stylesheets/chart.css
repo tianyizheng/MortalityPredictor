@@ -1,16 +1,16 @@
 #chart-container{
-	width: 1200px;
+	width: calc(100% - 20px);
+	display: flex;
 	margin-left: 10px;
+	margin-right: 10px;
 }
 
 #mortality-chart {
-	float: left;
+	
 	box-sizing: border-box;
 	box-shadow: 2px 2px 7px #848484;
 }
 #mortality-info {
-	float: left;
-	width: 400px;
 	padding: 10px;
 	box-sizing: border-box;
 }

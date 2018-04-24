@@ -185,7 +185,8 @@ class Chart{
 					var closest = self.findClosestPoint(d3.event.offsetX - self.margin.left, d3.event.offsetY - self.margin.top);
 
 					if(closest !== null){
-						self.updateInfo(closest.data, closest.idx);
+						
+						self.closestPoint = closest;
 
 						// place a dot on the highlighted point
 						self.g.select('circle.highlight-circle')
@@ -195,6 +196,9 @@ class Chart{
 							.attr('cy', self.y(self.getY(closest.data, closest.idx)))
 					}
 					else{
+
+						self.closestPoint = null;
+
 						// remove the dot
 						self.g.select('circle.highlight-circle')
 							.attr('fill', 'none')
@@ -204,15 +208,24 @@ class Chart{
 				})
 				.on('click', function(){
 					// TODO: Move this to a better button
-					self.axis_mode = 1 - self.axis_mode;
-					self.draw();
+
+					if(self.closestPoint !== null){
+						self.updateInfo(self.closestPoint.data, self.closestPoint.idx);
+					}
+
+					//self.axis_mode = 1 - self.axis_mode;
+					//self.draw();
 				});
 
 
 		// 0: admission mode, 1: date mode
 		this.axis_mode = 0;
 
-		this.max_contributions = 5;
+		this.max_contributions = 8;
+		this.min_contributions = 0;
+
+		this.closestPoint = null;
+		this.currentContributionArrow = null;
 
 
 		this.draw();
@@ -262,41 +275,113 @@ class Chart{
 
 	}
 
+
+	displayContributionArrow(sourceId, contributionData){
+		var self = this;
+		// draw a circle on the target
+		var sourceData = self.data[sourceId];
+		var sourceX = self.x(self.getX(sourceData, sourceId));
+		var sourceY = self.y(self.getY(sourceData, sourceId));
+
+		var encounterData = self.data[contributionData.encounterIdx];
+		var targetX = self.x(self.getX(encounterData, contributionData.encounterIdx));
+		var targetY = self.y(self.getY(encounterData, contributionData.encounterIdx));
+
+		if(sourceId !== contributionData.encounterIdx){
+			// draw source circle
+			//self.g.select('circle.source-circle')
+			//	.attr('fill', 'steelblue')
+			//	.attr('cx', sourceX)
+			//	.attr('cy', sourceY)
+
+			var midpoints = calcAngledPoint(sourceX, sourceY, targetX, targetY, Math.PI / 2, 1);
+
+			var x_ = midpoints[0];
+			var y_ = midpoints[1];
+
+			var arrow = self.g2.select('path.contribution-arrow')
+				.attr('stroke', 'url(#line-gradient')
+				.attr('display', 'show')
+				.attr('d', 'M {0},{1} Q {2},{3} {4},{5}'.format(sourceX, sourceY, x_, y_, targetX, targetY));
+
+
+			var transition_duration = 500;
+
+			self.g2.select('path.arrow-head')
+				.attr('display', 'show')
+				.attr('fill', 'url(#line-gradient')
+				.transition()
+					.duration(transition_duration)
+					.attrTween("transform", translateAlong(arrow.node()))
+
+			var totalLength = arrow.node().getTotalLength();
+
+			arrow
+				.attr("stroke-dasharray", totalLength + " " + totalLength)
+				//.attr("stroke-dashoffset", totalLength)
+			.transition()
+				.duration(transition_duration)
+				.attrTween('stroke-dashoffset', function() {
+					return function(t){
+						return (1 - t) * totalLength;
+					}
+				});
+
+
+			// draw arrow from source to target
+		}
+		else{
+
+			self.g.select('circle.target-circle')
+				.attr('fill', 'red')
+				.attr('cx', targetX)
+				.attr('cy', targetY)
+		}
+	}
+
+	clearContributionArrow(){
+		this.g.select('circle.source-circle')
+			.attr('fill', 'none');
+
+		this.g.select('circle.target-circle')
+			.attr('fill', 'none');
+
+		this.g2.select('path.contribution-arrow')
+			.attr('display', 'none')
+
+		this.g2.select('path.arrow-head')
+			.attr('display', 'none');
+	}
+
+
 	updateInfo(d, data_index){
 		var self = this;
 
 		//console.log(d);
 
 		// find top n contributions from the entire 2D array
-		var top = [];
-		var min_top = -Infinity;
+		var contributionData = [];
 
 		for(var i = 0; i < d.contributions.length; i++){
 			for(var j = 0; j < d.contributions[i].length; j++){
 				var c = Math.round(d.contributions[i][j] * 10000) / 10000;
 
-				if(top.length < this.max_contributions || c > min_top){
-					top.push({
-						'encounterIdx': i,
-						'encounterId': this.data[i].ID,
-						'codeIdx': j,
-						'contribution': c,
-					});
-
-					top.sort(function(a, b){
-						return b.contribution - a.contribution;
-					});
-
-					min_top = top[top.length - 1].contribution;
-
-					if(top.length >= this.max_contributions){
-						top.pop();
-					}
-				}
+				contributionData.push({
+					'encounterIdx': i,
+					'encounterId': this.data[i].ID,
+					'codeIdx': j,
+					'contribution': c,
+				});
 			}
 		}
 
-		
+		contributionData.sort(function(a, b){
+			return b.contribution - a.contribution;
+		});
+
+		if(this.max_contributions + this.min_contributions < contributionData.length){
+			contributionData.splice(this.max_contributions, contributionData.length - (this.max_contributions + this.min_contributions));
+		}
 
 		//console.log(top, min_top);
 
@@ -311,100 +396,30 @@ class Chart{
 		
 		var contributionTable = $('.contributionContainer table', html);
 
-		for(var i = 0; i < top.length; i++){
-			var codeData = this.codes[top[i].encounterId][top[i].codeIdx];
+		for(var i = 0; i < contributionData.length; i++){
+			var codeData = this.codes[contributionData[i].encounterId][contributionData[i].codeIdx];
 			var contributionHtml = $('<tr class="contribution">\
 				<td class="date">{0}</td>\
 				<td class="code">{1}</td>\
 				<td class="name">{2}</td>\
 				<td class="score">{3}</td>\
-			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[top[i].encounterIdx].startDate), codeData.code, codeData.name, top[i].contribution));
+			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[contributionData[i].encounterIdx].startDate), codeData.code, codeData.name, contributionData[i].contribution));
 
 			contributionHtml.on('mouseenter', function(event){
 				event.stopPropagation();
+				self.displayContributionArrow(this.sourceId, this.contributionData);
 
-				// draw a circle on the target
-				var sourceData = self.data[this.sourceId];
-				var sourceX = self.x(self.getX(sourceData, this.sourceId));
-				var sourceY = self.y(self.getY(sourceData, this.sourceId));
-
-				var encounterData = self.data[this.contributionData.encounterIdx];
-				var targetX = self.x(self.getX(encounterData, this.contributionData.encounterIdx));
-				var targetY = self.y(self.getY(encounterData, this.contributionData.encounterIdx));
-
-				if(this.sourceId !== this.contributionData.encounterIdx){
-					// draw source circle
-					//self.g.select('circle.source-circle')
-					//	.attr('fill', 'steelblue')
-					//	.attr('cx', sourceX)
-					//	.attr('cy', sourceY)
-
-					var midpoints = calcAngledPoint(sourceX, sourceY, targetX, targetY, Math.PI / 2, 1);
-
-					var x_ = midpoints[0];
-					var y_ = midpoints[1];
-
-					var arrow = self.g2.select('path.contribution-arrow')
-						.attr('stroke', 'url(#line-gradient')
-						.attr('display', 'show')
-						.attr('d', 'M {0},{1} Q {2},{3} {4},{5}'.format(sourceX, sourceY, x_, y_, targetX, targetY));
-
-
-					var transition_duration = 500;
-
-					self.g2.select('path.arrow-head')
-						.attr('display', 'show')
-						.attr('fill', 'url(#line-gradient')
-						.transition()
-							.duration(transition_duration)
-							.attrTween("transform", translateAlong(arrow.node()))
-
-					var totalLength = arrow.node().getTotalLength();
-
-					arrow
-						.attr("stroke-dasharray", totalLength + " " + totalLength)
-						//.attr("stroke-dashoffset", totalLength)
-					.transition()
-						.duration(transition_duration)
-						.attrTween('stroke-dashoffset', function() {
-							return function(t){
-								return (1 - t) * totalLength;
-							}
-						});
-
-
-					// draw arrow from source to target
-				}
-				else{
-
-					self.g.select('circle.target-circle')
-						.attr('fill', 'red')
-						.attr('cx', targetX)
-						.attr('cy', targetY)
-				}
-
-
-
-			}.bind({contributionData: top[i], sourceId: parseInt(data_index)}))
+			}.bind({contributionData: contributionData[i], sourceId: parseInt(data_index)}))
 			.on('mouseleave', function(event){
-
 				event.stopPropagation();
+				self.clearContributionArrow();
+			})
+			.on('click', function(event){
+				// lock the arrow display to the current one
+				self.currentContributionArrow = true;
+				self.displayContributionArrow(this.sourceId, this.contributionData);
 
-				self.g.select('circle.source-circle')
-					.attr('fill', 'none');
-
-				self.g.select('circle.target-circle')
-					.attr('fill', 'none');
-
-
-				self.g2.select('path.contribution-arrow')
-					.attr('display', 'none')
-
-				self.g2.select('path.contribution-arrow').transition();
-
-				self.g2.select('path.arrow-head')
-					.attr('display', 'none');
-			});
+			}.bind({contributionData: contributionData[i], sourceId: parseInt(data_index)}));
 
 			contributionTable.append(contributionHtml);
 		}

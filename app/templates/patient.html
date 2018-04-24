@@ -13,7 +13,9 @@
             <h1>Patient: {{ patientID }}</h1>
             <h2>Mortality Prediction: {{ mortalityPrediction }}</h2>
             <div id="chart-container">
-                <svg id="mortality-chart" width="800" height="500"></svg>
+                <div class="svg-container">
+                    <svg id="mortality-chart" width="800" height="500"></svg>
+                </div>
                 <div id="mortality-info"></div>
             </div>
             <br>
@@ -21,36 +23,6 @@
                 <h4>{{ error }}</h4>
             {% endfor %}
             <br>
-            {% if codes %}
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>encounter</th>
-                            <th>startDate</th>
-                            <th>icd Code</th>
-                            <th>contribution score</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for encounter in encounters %}
-                            <tr>
-                                <td>{{ encounter["id"] }}</td>
-                                <td>{{ encounter["startDate"].isostring}}<td>
-                                <td></td>
-                                <td></td>
-                            </tr>
-                            {% for code, score in codes[encounter["id"]] %}
-                                <tr>
-                                    <td></td>
-                                    <td></td>
-                                    <td>{{ code }}</td>
-                                    <td>{{ score }}</td>
-                                </tr>
-                            {% endfor %}
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% endif %}
             
             
         </div>

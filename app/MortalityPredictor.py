@@ -218,15 +218,20 @@ class MortalityPredictor(object):
             
             return y_t, contributions
 
-
-    def icd9_to_sparse(self, code):
-        code_str = 'D_'
+    @staticmethod
+    def parseIcd9(code):
+        code_str = ''
         if code.startswith('E'):
             code_str = code_str + 'E'
             code = code[1:]
         if len(code) > 3:
             code = code[0:3] + '.' + code[3:]
         code_str = code_str + code
+
+        return code_str
+
+    def icd9_to_sparse(self, code):
+        code_str = 'D_' + code
 
         if code_str in self.codes:
             return self.codes[code_str]
