@@ -23,6 +23,39 @@
                 <h4>{{ error }}</h4>
             {% endfor %}
             <br>
+<<<<<<< HEAD
+            {% if codes %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>encounter</th>
+                            <th>startDate</th>
+                            <th>icd Code</th>
+                            <th>contribution score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for encounter in encounters %}
+                            <tr>
+                                <td>{{ encounter["id"] }}</td>
+                                <td>{{ encounter["startDate"].strftime("%Y-%m-%d %H:%M:%S")}}<td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            {% for code, score in codes[encounter["id"]] %}
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td>{{ code }}</td>
+                                    <td>{{ score }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+=======
+>>>>>>> c1bc575113677dbe5395977162332649f40ed7c8
             
             
         </div>

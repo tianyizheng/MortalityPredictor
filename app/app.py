@@ -110,7 +110,6 @@ def patient(patientID):
   try:
     # get icdCodes form patientID
     encounters, icdCodes = getPatientDataAndCodes(patientID)
-    codesAndScores = {}
 
     encounterData = []
     keys = []
@@ -128,15 +127,6 @@ def patient(patientID):
     
     incremental_preds, incremental_contributions = model.incremental_predict_icd9(encounterData)
     incrementalPredictions = list(map(lambda x: round(x * rounding_factor) / rounding_factor, incremental_preds))
-    
-    # TODO: This is only valid for the last prediction. Use incremental_contributions to get the contribution
-    # scores for the previous steps
-    # Zip each code with its corresponding contribution score
-    for i, encounterId in enumerate(keys):
-        codesAndScores[encounterId] = []
-        for j, code in enumerate(encounterData[i]):
-            score = round(contributions[i][j] * rounding_factor) / rounding_factor
-            codesAndScores[encounterId].append((code, score))
                 
   except Exception as e:
     errors.append("error")
@@ -144,7 +134,7 @@ def patient(patientID):
 
   return render_template('patient.html', patientID = patientID,
     mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions, incrementalContributions = incremental_contributions,
-    errors = errors, codes=codesAndScores, keys=keys, codeDict = icdCodes, encounters = encounters)
+    errors = errors, keys=keys, codeDict = icdCodes, encounters = encounters)
 
 
 @app.route('/chart2', methods=['GET'])
@@ -184,7 +174,7 @@ def icdToSnomed(snowmed):
         .first()
 
   icdDict = {}
-  icdDict["code"] = icdCodeAndName[0].condition_source_value
+  icdDict["code"] = MortalityPredictor.parseIcd9(icdCodeAndName[0].condition_source_value)
   icdDict["name"] = icdCodeAndName[1]
 
   return icdDict
