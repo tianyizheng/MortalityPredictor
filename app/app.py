@@ -179,19 +179,22 @@ def get_observations(message):
         codes = e.resource.code.coding
         value = e.resource.valueQuantity
 
-        if codes and encounterId and value:
+        if codes and encounterId:
 
           thisEncounterObservations = []
-          for c in codes:
+          c = codes[0]
+          if c:
             thisObservation = {}
             thisObservation["system"] = c.system
             thisObservation["code"] = c.code
             thisObservation["name"] = c.display
-            thisObservation["units"] = value.unit
-            thisObservation["value"] = value.value
+            thisObservation["units"] = value.unit if value else ""
+            thisObservation["value"] = value.value if value else ""
             thisEncounterObservations.append(thisObservation)
-
+          if encounterId not in observationData:
             observationData[encounterId] = thisEncounterObservations
+          else:
+            observationData[encounterId].append(thisObservation)
   emit('get observations', {'observationData': observationData})
 
 def icdToSnomed(snowmed):
