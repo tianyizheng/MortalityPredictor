@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <link rel="stylesheet" href="/static/stylesheets/chart.css">
+
+        <title>Patient Code</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+            integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    </head>
+    <body>
+        <div id="content">
+            <h1>Patient: {{ patientID }}</h1>
+            <h2>Mortality Prediction: {{ mortalityPrediction }}</h2>
+            <div id="chart-container">
+                <div class="svg-container">
+                    <svg id="mortality-chart" width="800" height="500"></svg>
+                </div>
+                <div id="mortality-info"></div>
+            </div>
+            <br>
+            {% for error in errors %}
+                <h4>{{ error }}</h4>
+            {% endfor %}
+            <br>
+<<<<<<< HEAD
+            {% if codes %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>encounter</th>
+                            <th>startDate</th>
+                            <th>icd Code</th>
+                            <th>contribution score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for encounter in encounters %}
+                            <tr>
+                                <td>{{ encounter["id"] }}</td>
+                                <td>{{ encounter["startDate"].strftime("%Y-%m-%d %H:%M:%S")}}<td>
+                                <td></td>
+                                <td></td>
+                            </tr>
+                            {% for code, score in codes[encounter["id"]] %}
+                                <tr>
+                                    <td></td>
+                                    <td></td>
+                                    <td>{{ code }}</td>
+                                    <td>{{ score }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+=======
+>>>>>>> c1bc575113677dbe5395977162332649f40ed7c8
+            
+            
+        </div>
+        <script src="//code.jquery.com/jquery-2.2.1.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous">
+        </script>
+        <script src="/static/javascripts/Chart.js"></script>
+        <script type="text/javascript">
+
+            var codes = {
+                {% for key in codeDict %}
+                    '{{ key }}': [
+                    {% for data in codeDict[key] %}
+                        {
+                            'code': '{{ data["code"] }}',
+                            'name': '{{ data["name"] }}',
+                        },
+                    {% endfor %} ],
+                {% endfor %}
+            };
+
+            var encounterData = [
+                {% for encounter in encounters %}
+                    {
+                        'ID': {{ encounter["id"] }}, 
+                        'startDate': new Date('{{ encounter["startDate"] }}'),
+                        'endDate': new Date('{{ encounter["endDate"] }}'),
+                        'prediction': {{ incrementalPredictions[loop.index - 1] }},
+                        'idx': {{ loop.index - 1}}, 
+                        'contributions': {{ incrementalContributions[loop.index - 1] }}
+                    },
+                {% endfor %}
+            ];
+
+            var svg = $('#mortality-chart');
+            var infoContainer = $('#mortality-info')
+            
+            var chart = new Chart(encounterData, codes, svg, infoContainer);
+            
+        
+        </script>
+    </body>
+</html>
