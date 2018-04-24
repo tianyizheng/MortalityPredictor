@@ -247,6 +247,15 @@ class Chart{
 					}
 
 				})
+				.on('mouseleave', function(){
+					self.closestPoint = null;
+					self.hideTooltip();
+
+					// remove the dot
+					self.g.select('circle.highlight-circle')
+						.attr('fill', 'none')
+						.attr('stroke', 'none')
+				})
 				.on('click', function(){
 					// TODO: Move this to a better button
 
@@ -269,7 +278,7 @@ class Chart{
 
 
 		// 0: admission mode, 1: date mode
-		this.axis_mode = 0;
+		this.axis_mode = 1;
 
 		this.max_contributions = 8;
 		this.min_contributions = 0;
