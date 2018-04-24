@@ -113,7 +113,7 @@ class Chart{
 			.attr('class', 'x-axis')
 
 		this.g.append('g')
-			.call(d3.axisLeft(this.y).tickFormat(function(d){ return Math.round(d * 100); }))
+			.call(d3.axisLeft(this.y))
 		.append('text')
 			.attr('fill', '#000')
 			//.attr('transform', 'rotate(-90)')
@@ -210,10 +210,35 @@ class Chart{
 							.attr('stroke', 'grey')
 							.attr('cx', self.x(self.getX(closest.data, closest.idx)))
 							.attr('cy', self.y(self.getY(closest.data, closest.idx)))
+
+						self.showTooltip([
+							[
+								{
+									text: 'Mortality Risk',
+									style: {'font-size': '1.5em'}
+								},
+							],
+							[
+								{
+									text: closest.data.prediction,
+									style: {'font-size': '1.2em', 'padding-bottom': '5px'}
+								},
+							],
+							[
+								{
+									text: '{0} - {1}'.format(d3.timeFormat("%m/%d/%Y")(closest.data.startDate), d3.timeFormat("%m/%d/%Y")(closest.data.endDate)),
+									style: {'font-size': '1em'}
+								},
+							],
+						], {left: d3.event.pageX + 20, top: d3.event.pageY - 5})
+
+
+						// display tooltip 
 					}
 					else{
 
 						self.closestPoint = null;
+						self.hideTooltip();
 
 						// remove the dot
 						self.g.select('circle.highlight-circle')
@@ -256,6 +281,45 @@ class Chart{
 
 
 		this.draw();
+	}
+
+	showTooltip(data, options){
+
+		var html = '';
+
+		for(var i = 0; i < data.length; i++){
+			html += '<tr>'
+			for(var j = 0; j < data[i].length; j++){
+				var element = data[i][j];
+				var text = element.text;
+
+				var style = '';
+				for(var key in element.style){
+					style += key + ': ' + element.style[key] + ';';
+				}
+
+				html += '<td style="' + style + '">' + text + '</td>';
+			}
+			html += '</tr>'
+		}
+
+		html = '<div><table>' + html + '</table></div>';
+		var tooltip = $('#tooltip');
+
+		tooltip.html(html);
+
+		
+		//var placement = this.adjustPlacement(tooltip, options);
+
+		tooltip.show();
+		tooltip.css({
+			'left': options.left, 
+			'top': options.top,
+		});
+	}
+
+	hideTooltip(){
+		$('#tooltip').hide();
 	}
 
 	setObservationData(data){
@@ -474,7 +538,7 @@ class Chart{
 
 		var html = $('<div class="">\
 			<div class="">Admission {0}</div>\
-			<div class="">{1} to {2}</div>\
+			<div class="">{1} - {2}</div>\
 			<div class="">Mortality Risk: {3}</div>\
 			<div class="contributionContainer">\
 				<table class="contributionTable">\
@@ -489,7 +553,7 @@ class Chart{
 					<button class="moreButton contributionButton">Show More</button>\
 				</div>\
 			</div>\
-		<div>'.format(i, d3.timeFormat("%m-%d-%Y")(d.startDate), d3.timeFormat("%m-%d-%Y")(d.endDate), d.prediction));
+		<div>'.format(i, d3.timeFormat("%m/%d/%Y")(d.startDate), d3.timeFormat("%m/%d/%Y")(d.endDate), d.prediction));
 
 		if(this.max_contributions <= 8	){
 			$('button.lessButton', html).attr('disabled', true);
@@ -629,7 +693,7 @@ class Chart{
 			this.g.select('.x-axis')
 				.call(
 					d3.axisBottom(this.x)
-              		.tickFormat(d3.timeFormat("%Y-%m-%d"))
+              		.tickFormat(d3.timeFormat("%m/%d/%Y"))
 				);
 		}
 
