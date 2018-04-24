@@ -693,6 +693,11 @@ class Chart{
 			var xMax = +d3.max(this.data, function(d){ return d.startDate; });
 
 			var range = xMax - xMin;
+
+			if(range === 0){
+				range = (+d3.max(this.data, function(d){ return d.endDate; }) - +d3.min(this.data, function(d){ return d.startDate; })) * 2;
+			}
+
 			xMin = new Date(xMin - 0.1 * range);
 			xMax = new Date(xMax + 0.1 * range);
 
