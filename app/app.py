@@ -106,6 +106,7 @@ def patient(patientID):
   errors = []
   prediction = []
   incrementalPredictions = []
+  incremental_contributions = []
 
   try:
     # get icdCodes form patientID
@@ -123,10 +124,11 @@ def patient(patientID):
     rounding_factor = 10000.0
     
     preds, contributions = model.predict_icd9(encounterData)
-    prediction = round(preds * rounding_factor) / rounding_factor
+    prediction = round(preds * rounding_factor) / rounding_factor if preds is not None else 'N/A'
+
     
     incremental_preds, incremental_contributions = model.incremental_predict_icd9(encounterData)
-    incrementalPredictions = list(map(lambda x: round(x * rounding_factor) / rounding_factor, incremental_preds))
+    incrementalPredictions = [pred for pred in list(map(lambda x: None if x is None else round(x * rounding_factor) / rounding_factor, incremental_preds)) if pred is not None]
                 
   except Exception as e:
     errors.append("error")

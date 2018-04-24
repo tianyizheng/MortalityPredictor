@@ -259,8 +259,9 @@ class MortalityPredictor(object):
         for i in range(len(data)):
             inputs = data[:i+1]
             p, c = self.predict_icd9(inputs)
-            preds.append(p)
-            contribs.append(c)
+            if p is not None and c is not None:
+                preds.append(p)
+                contribs.append(c)
 
         return preds, contribs
 

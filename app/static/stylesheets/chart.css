@@ -65,6 +65,10 @@
 	font-size: 1.2em;
 }
 
+.x-axis .tick text {
+	font-size: 1em;
+}
+
 .grid line{
 	stroke: #c7c7c7;
 	stroke-dasharray: 8,8;
