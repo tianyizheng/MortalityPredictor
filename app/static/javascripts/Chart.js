@@ -162,6 +162,20 @@ class Chart{
 			.attr('stroke-width', 1.5)
 			.attr('r', 10);
 
+		this.g.append('circle')
+			.attr('class', 'pulse-circle-1')
+			.attr('fill', 'none')
+			.attr('stroke', 'none')
+			.attr('stroke-width', 1.5)
+			.attr('r', 10);
+
+		this.g.append('circle')
+			.attr('class', 'pulse-circle-2')
+			.attr('fill', 'none')
+			.attr('stroke', 'none')
+			.attr('stroke-width', 1.5)
+			.attr('r', 10);
+
 		this.g2.append('path')
 			.attr('class', 'contribution-arrow')
 			.attr('fill', 'none')
@@ -211,6 +225,12 @@ class Chart{
 
 					if(self.closestPoint !== null){
 						self.updateInfo(self.closestPoint.data, self.closestPoint.idx);
+
+
+						// display pulse on the target point
+						self.pulse(self.x(self.getX(self.closestPoint.data, self.closestPoint.idx)), self.y(self.getY(self.closestPoint.data, self.closestPoint.idx)));
+						
+
 					}
 
 					//self.axis_mode = 1 - self.axis_mode;
@@ -229,6 +249,47 @@ class Chart{
 
 
 		this.draw();
+	}
+
+	pulse(x, y){
+		this.g.select('circle.pulse-circle-1')
+			.attr('fill', 'none')
+			.attr('stroke', 'red')
+			.attr('cx', x)
+			.attr('cy', y)
+			//.attr('r', 0)
+		.transition()
+			.duration(700)
+			.attrTween('r', function(){
+				return function(t){
+					return t * 50;
+				}
+			})
+			.attrTween('opacity', function(){
+				return function(t){
+					return 1 - t;
+				}
+			});
+
+		this.g.select('circle.pulse-circle-2')
+			.attr('fill', 'none')
+			.attr('stroke', 'red')
+			.attr('cx', x)
+			.attr('cy', y)
+			//.attr('r', 0)
+		.transition()
+			.duration(700)
+			.delay(100)
+			.attrTween('r', function(){
+				return function(t){
+					return t * 50;
+				}
+			})
+			.attrTween('opacity', function(){
+				return function(t){
+					return 1 - t;
+				}
+			});
 	}
 
 	getX(d, i){
@@ -336,6 +397,8 @@ class Chart{
 				.attr('fill', 'red')
 				.attr('cx', targetX)
 				.attr('cy', targetY)
+
+			self.pulse(targetX, targetY);
 		}
 	}
 
@@ -387,11 +450,10 @@ class Chart{
 
 		var html = $('<div class="">\
 			<div class="">Admission {0}</div>\
-			<div class="">Start: {1}</div>\
-			<div class="">End: {2}</div>\
+			<div class="">{1} to {2}</div>\
 			<div class="">Mortality Rating: {3}</div>\
-			<div class="contributionContainer"><table></table></div>\
-		<div>'.format(i, d3.timeFormat("%Y-%m-%d")(d.startDate), d3.timeFormat("%Y-%m-%d")(d.endDate), d.prediction));
+			<div class="contributionContainer"><table class="contributionTable"></table></div>\
+		<div>'.format(i, d3.timeFormat("%m-%d-%Y")(d.startDate), d3.timeFormat("%m-%d-%Y")(d.endDate), d.prediction));
 
 		
 		var contributionTable = $('.contributionContainer table', html);
@@ -403,7 +465,7 @@ class Chart{
 				<td class="code">{1}</td>\
 				<td class="name">{2}</td>\
 				<td class="score">{3}</td>\
-			</tr>'.format(d3.timeFormat("%Y-%m-%d")(this.data[contributionData[i].encounterIdx].startDate), codeData.code, codeData.name, contributionData[i].contribution));
+			</tr>'.format(d3.timeFormat("%m-%d-%Y")(this.data[contributionData[i].encounterIdx].startDate), codeData.code, codeData.name, contributionData[i].contribution));
 
 			contributionHtml.on('mouseenter', function(event){
 				event.stopPropagation();

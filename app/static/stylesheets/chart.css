@@ -13,6 +13,7 @@
 #mortality-info {
 	padding: 10px;
 	box-sizing: border-box;
+	flex: 1;
 }
 
 .line {
@@ -28,10 +29,19 @@
 
 .contributionContainer tr.contribution td.date{
 	padding-left: 0;
+	min-width: 80px;
+}
+
+.contributionContainer tr.contribution td.code{
+	min-width: 70px;
 }
 
 .contributionContainer tr.contribution td.score{
 	padding-right: 0;
+}
+
+.contributionTable {
+	width: 100%;
 }
 
 .tick text {
