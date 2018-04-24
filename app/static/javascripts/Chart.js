@@ -500,13 +500,11 @@ class Chart{
 
 
 		$('button.lessButton', html).on('click', function(event){
-			console.log('less clicked');
 			self.max_contributions = 8;
 			self.drawContributionInfo();
 		});
 
 		$('button.moreButton', html).on('click', function(event){
-			console.log('more clicked');
 			self.max_contributions = Math.min(self.max_contributions + 5, num_contributions);
 			self.drawContributionInfo();
 		});
@@ -567,7 +565,6 @@ class Chart{
 			var encounterId = this.data[parseInt(data_index)].ID;
 
 			var obsData = this.observationData[encounterId];
-			console.log(obsData);
 
 			observationHtml.append('<tr>\
 				<td class="code">Loinc</td>\
