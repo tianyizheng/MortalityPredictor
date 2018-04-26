@@ -746,8 +746,9 @@ class Chart{
 			this.g.select('.x-axis')
 				.call(
 					d3.axisBottom(this.x)
-						.tickValues(Array.from(Array(this.data.length).keys()))
-						.tickFormat(function(d){ return 'Adm ' + (d + 1);})
+						// Display only some ticks, and only on real data points (no fractions or labels before/after the data)
+						.tickFormat(function(d){ return d >= 0 && d <= self.data.length - 1 && d % 1 === 0 ? 'Admission ' + (d + 1) : '';})
+						.ticks(6)
 				)
 				.select('.domain').remove();
 
