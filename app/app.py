@@ -110,7 +110,7 @@ def patient(patientID):
 
   try:
     # get icdCodes form patientID
-    encounters, icdCodes = getPatientDataAndCodes(patientID)
+    patientData, encounters, icdCodes = getPatientDataAndCodes(patientID)
 
     encounterData = []
     keys = []
@@ -136,7 +136,7 @@ def patient(patientID):
 
   return render_template('patient.html', patientID = patientID,
     mortalityPrediction = prediction, incrementalPredictions = incrementalPredictions, incrementalContributions = incremental_contributions,
-    errors = errors, keys=keys, codeDict = icdCodes, encounters = encounters)
+    errors = errors, keys=keys, codeDict = icdCodes, encounters = encounters, patientData = patientData)
 
 
 @app.route('/chart2', methods=['GET'])
@@ -244,11 +244,14 @@ def getPatientDataAndCodes(patientID):
   # search for patient's conditions
   
   conditionSearch = conditions.Condition.where(struct={'patient': patientID})
-  observationSearch = observation.Observation.where(struct={'patient': patientID})
+  #observationSearch = observation.Observation.where(struct={'patient': patientID})
+
+  patientSearch = p.Patient.where(struct={'_id': patientID})
 
   # TODO: pagination of bundles
   conditionBundle = conditionSearch.perform(smart.server)
   # observationBundle = observationSearch.perform(smart.server)
+  patients = patientSearch.perform_resources(smart.server)
 
   if conditionBundle.entry:
     # each entry's resource contains one encounter and its codes
@@ -285,6 +288,19 @@ def getPatientDataAndCodes(patientID):
 
             encounterDict[encounterId] = thisEncounter
 
+  patientData = {}
+
+  if patients and len(patients) > 0:
+    patient = patients[0]
+    patientName = 'N/A'
+    if len(patient.name) > 0:
+      patientName = ' '.join(patient.name[0].given) + ' ' + ' '.join(patient.name[0].family)
+      patientName = ' '.join(map(lambda x: x.capitalize(), patientName.lower().split()))
+
+    patientData['name'] = patientName
+    
+
+
   # if observationBundle.entry:
   #   for e in observationBundle.entry:
   #     if e.resource.encounter and e.resource.code:
@@ -311,7 +327,7 @@ def getPatientDataAndCodes(patientID):
   encounters = [value for key, value in sorted(encounterDict.items(),
                key=lambda x: x[1]["startDate"])]
 
-  return encounters, codeDict
+  return patientData, encounters, codeDict
 
 
 if __name__ == "__main__":
