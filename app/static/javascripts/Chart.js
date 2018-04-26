@@ -44,8 +44,7 @@ function translateAlong(path) {
 }
 
 class Chart{
-	constructor(data, codes, element, infoContainer, observationContainer){
-		console.log('connecting the chart 2');
+	constructor(data, codes, element, infoContainer, observationContainer, axisControlContainer){
 		var self = this;
 
 		this.data = data;
@@ -54,6 +53,7 @@ class Chart{
 		this.svg = d3.select(element[0]);
 		this.infoContainer = infoContainer;
 		this.observationContainer = observationContainer;
+		this.axisControlContainer = axisControlContainer;
 
 		this.margin = {top: 20, right: 20, bottom: 30, left: 50};
 		this.width = +this.svg.attr('width') - this.margin.left - this.margin.right;
@@ -70,7 +70,7 @@ class Chart{
 				
 		// x domain needs to be toggleable
 		this.x.domain([-1, this.data.length]);
-		this.y.domain([0, 1]);
+		this.y.domain([0, 100]);
 		
 		this.line = d3.line()
 			.x(function(d, i) { return self.x(self.getX(d, i)); })
@@ -80,11 +80,11 @@ class Chart{
 			.attr('id', 'temperature-gradient')
 			.attr('gradientUnits', 'userSpaceOnUse')
 			.attr('x1', 0).attr('y1', this.y(0))
-			.attr('x2', 0).attr('y2', this.y(1))
+			.attr('x2', 0).attr('y2', this.y(100))
 		.selectAll('stop')
 			.data([
-				{offset: '0%', color: '#a80000', opacity: 0},
-				{offset: '100%', color: '#a80000', opacity: 1}
+				{offset: '0%', color: 'red', opacity: 0.05},
+				{offset: '100%', color: 'red', opacity: 0.5}
 			])
 		.enter().append('stop')
 			.attr('offset', function(d) { return d.offset; })
@@ -95,11 +95,11 @@ class Chart{
 			.attr('id', 'line-gradient')
 			.attr('gradientUnits', 'userSpaceOnUse')
 			.attr('x1', 0).attr('y1', this.y(0))
-			.attr('x2', 0).attr('y2', this.y(1))
+			.attr('x2', 0).attr('y2', this.y(100))
 		.selectAll('stop')
 			.data([
 				{offset: '0%', color: 'grey', opacity: 0.5},
-				{offset: '100%', color: '#800823', opacity: 1}
+				{offset: '100%', color: 'red', opacity: 1}
 			])
 		.enter().append('stop')
 			.attr('offset', function(d) { return d.offset; })
@@ -113,16 +113,11 @@ class Chart{
 			.attr('class', 'x-axis')
 
 		this.g.append('g')
-			.call(d3.axisLeft(this.y))
-		.append('text')
-			.attr('fill', '#000')
-			//.attr('transform', 'rotate(-90)')
-			.attr('x', 5)
-			.attr('y', 0)
-			.attr('dy', '1em')
-			.attr('font-size', '2em')
-			.attr('text-anchor', 'start')
-			.text('Mortality Risk');
+			.attr('class', 'y-axis')
+			.call(d3.axisLeft(this.y).ticks(5).tickSize(5))
+			.select('.domain').remove();
+
+		this.g.selectAll('.y-axis .tick line').remove();
 
 		this.g0.append('g')
 			.attr('class', 'grid')
@@ -140,22 +135,31 @@ class Chart{
 			.attr('fill', 'none')
 			.attr('stroke-linejoin', 'round')
 			.attr('stroke-linecap', 'round')
-			.attr('stroke-width', 1.5)
 			.attr('d', this.line);
 
-		this.g.append('circle')
-			.attr('class', 'highlight-circle')
+		this.g.append('path')
+			.datum(this.data)
+			.attr('class', 'linearea')
 			.attr('fill', 'none')
-			.attr('stroke', 'none')
-			.attr('stroke-width', 1.5)
-			.attr('r', 10)
+			.attr('stroke-linejoin', 'round')
+			.attr('stroke-linecap', 'round')
+			.attr('d', this.line);
+
 
 		this.g.append('circle')
 			.attr('class', 'target-circle')
 			.attr('fill', 'none')
 			.attr('stroke', 'none')
-			.attr('stroke-width', 1.5)
-			.attr('r', 10)
+			.attr('stroke-width', 3.5)
+			.attr('r', 15)
+
+		this.g.append('circle')
+			.attr('class', 'highlight-circle')
+			.attr('fill', 'none')
+			.attr('stroke', 'none')
+			.attr('stroke-width', 3.5)
+			.attr('r', 15)
+
 
 		this.g.append('circle')
 			.attr('class', 'source-circle')
@@ -186,7 +190,7 @@ class Chart{
 			.attr('stroke-width', 1.5);
 
 		this.g2.append("svg:path")
-			.attr("d", function(d){ return d3.symbol().type(d3.symbolTriangle).size(40)(); })
+			.attr("d", function(d){ return d3.symbol().type(d3.symbolTriangle).size(100)(); })
 			.attr('class', 'arrow-head')
 			.attr('display', 'none');
 
@@ -207,7 +211,7 @@ class Chart{
 						// place a dot on the highlighted point
 						self.g.select('circle.highlight-circle')
 							//.attr('stroke', 'url(#temperature-gradient)')
-							.attr('stroke', 'grey')
+							.attr('stroke', '#4A90E2')
 							.attr('cx', self.x(self.getX(closest.data, closest.idx)))
 							.attr('cy', self.y(self.getY(closest.data, closest.idx)))
 
@@ -215,13 +219,13 @@ class Chart{
 							[
 								{
 									text: 'Mortality Risk',
-									style: {'font-size': '1.5em'}
+									style: {'font-size': '1.2em', 'font-weight': 'bold'}
 								},
 							],
 							[
 								{
 									text: closest.data.prediction,
-									style: {'font-size': '1.2em', 'padding-bottom': '5px'}
+									style: {'font-size': '1.6em', 'color': '#c90000', 'padding-bottom': '5px'}
 								},
 							],
 							[
@@ -260,15 +264,17 @@ class Chart{
 					// TODO: Move this to a better button
 
 					if(self.closestPoint !== null){
+						self.currentContributionArrow = null;
+						self.clearContributionArrow();
+
 						self.updateInfo(self.closestPoint.data, self.closestPoint.idx);
-						self.max_contributions = 8;
+						self.max_contributions = 5;
 						self.drawContributionInfo();
 						self.drawObservationInfo();
 
 
 						// display pulse on the target point
 						self.pulse(self.x(self.getX(self.closestPoint.data, self.closestPoint.idx)), self.y(self.getY(self.closestPoint.data, self.closestPoint.idx)));
-						
 
 					}
 
@@ -277,14 +283,34 @@ class Chart{
 				});
 
 
+		$('.dateAxisButton', this.axisControlContainer).click(function(event){
+			self.axis_mode = 1;
+			self.currentContributionArrow = null;
+			self.clearContributionArrow();
+			self.draw();
+			$('.axisButton', self.axisControlContainer).removeClass('active');
+			$(this).addClass('active');
+		});
+
+		$('.admissionAxisButton', this.axisControlContainer).click(function(event){
+			self.axis_mode = 0;
+			self.currentContributionArrow = null;
+			self.clearContributionArrow();
+			self.draw();
+			$('.axisButton', self.axisControlContainer).removeClass('active');
+			$(this).addClass('active');
+		});
+
+
 		// 0: admission mode, 1: date mode
 		this.axis_mode = 1;
 
-		this.max_contributions = 8;
+		this.max_contributions = 5;
 		this.min_contributions = 0;
 
 		this.closestPoint = null;
 		this.currentContributionArrow = null;
+
 
 		this.infoData = null;
 
@@ -482,7 +508,7 @@ class Chart{
 		else{
 
 			self.g.select('circle.target-circle')
-				.attr('fill', 'red')
+				.attr('stroke', '#c90000')
 				.attr('cx', targetX)
 				.attr('cy', targetY)
 
@@ -495,7 +521,7 @@ class Chart{
 			.attr('fill', 'none');
 
 		this.g.select('circle.target-circle')
-			.attr('fill', 'none');
+			.attr('stroke', 'none');
 
 		this.g2.select('path.contribution-arrow')
 			.attr('display', 'none')
@@ -546,25 +572,31 @@ class Chart{
 		}
 
 		var html = $('<div class="">\
-			<div class="">Admission {0}</div>\
-			<div class="">{1} - {2}</div>\
-			<div class="">Mortality Risk: {3}</div>\
-			<div class="contributionContainer">\
-				<table class="contributionTable">\
-					<tr class="contribution">\
-						<td class="score">Contribution</td>\
-						<td class="code">ICD-9</td>\
-						<td class="name">Name</td>\
-					</tr>\
-				</table>\
-				<div class="contributionButtonContainer">\
-					<button class="lessButton contributionButton">Show Less</button>\
-					<button class="moreButton contributionButton">Show More</button>\
+			<div class="detailContainer">\
+				<div class="admissionTitle">Admission {0}</div>\
+				<div class="dateRange">{1} - {2}</div>\
+			</div>\
+			<div class="detailContainer">\
+				<div class="mortalityTitle">Mortality Risk</div>\
+				<div class="mortalityScore">{3}</div>\
+			</div>\
+			<div class="detailContainer last">\
+				<div class="contributionContainer">\
+					<table class="contributionTable">\
+						<tr class="contribution">\
+							<td class="name header">Risk Factors</td>\
+							<td class="score header">Contribution</td>\
+						</tr>\
+					</table>\
+					<div class="contributionButtonContainer">\
+						<button class="lessButton contributionButton">Show Less</button>\
+						<button class="moreButton contributionButton">Show More</button>\
+					</div>\
 				</div>\
 			</div>\
 		<div>'.format(i, d3.timeFormat("%m/%d/%Y")(d.startDate), d3.timeFormat("%m/%d/%Y")(d.endDate), d.prediction));
 
-		if(this.max_contributions <= 8	){
+		if(this.max_contributions <= 5	){
 			$('button.lessButton', html).attr('disabled', true);
 		}
 		if(this.max_contributions >= num_contributions){
@@ -573,7 +605,7 @@ class Chart{
 
 
 		$('button.lessButton', html).on('click', function(event){
-			self.max_contributions = 8;
+			self.max_contributions = 5;
 			self.drawContributionInfo();
 		});
 
@@ -587,29 +619,50 @@ class Chart{
 		for(var i = 0; i < contributionData.length; i++){
 			var codeData = this.codes[contributionData[i].encounterId][contributionData[i].codeIdx];
 			var contributionHtml = $('<tr class="contribution">\
-				<td class="score">{0}</td>\
-				<td class="code">{1}</td>\
-				<td class="name">{2}</td>\
-			</tr>'.format(contributionData[i].contribution, codeData.code, codeData.name));
+				<td class="name" title="{0}">{1}</td>\
+				<td class="score"><div class="scoreBubble">{2}</div></td>\
+			</tr>'.format(codeData.code, codeData.name, contributionData[i].contribution));
 
-			$('.score', contributionHtml).css({
+			$('.score .scoreBubble', contributionHtml).css({
 				'background-color': d3.interpolateRdBu(-contributionData[i].contribution * 0.5 + 0.5),
 				'color': Math.abs(contributionData[i].contribution) > 0.5 ? 'white' : 'black',
 			});
 
 			contributionHtml.on('mouseenter', function(event){
 				event.stopPropagation();
-				self.displayContributionArrow(this.sourceId, this.contributionData);
+				if(self.currentContributionArrow === null){
+					self.displayContributionArrow(this.sourceId, this.contributionData);
+				}
 
 			}.bind({contributionData: contributionData[i], sourceId: parseInt(data_index)}))
 			.on('mouseleave', function(event){
 				event.stopPropagation();
-				self.clearContributionArrow();
+
+				if(self.currentContributionArrow === null){
+					self.clearContributionArrow();
+				}
+
 			})
 			.on('click', function(event){
 				// lock the arrow display to the current one
-				self.currentContributionArrow = true;
-				self.displayContributionArrow(this.sourceId, this.contributionData);
+				event.stopPropagation();
+				if(self.currentContributionArrow === this.contributionData.codeIdx){
+					self.currentContributionArrow = null;
+					$('tr.contribution').removeClass('active');
+					$('tr.contribution').removeClass('prevActive');
+				}
+				else{
+					self.currentContributionArrow = this.contributionData.codeIdx;
+					self.clearContributionArrow();
+					self.displayContributionArrow(this.sourceId, this.contributionData);
+
+					// lock display
+					//console.log(event);
+					$('tr.contribution').removeClass('active');
+					$('tr.contribution').removeClass('prevActive');
+					$(event.delegateTarget).addClass('active');
+					$(event.delegateTarget).prev().addClass('prevActive');
+				}
 
 			}.bind({contributionData: contributionData[i], sourceId: parseInt(data_index)}));
 
@@ -685,7 +738,10 @@ class Chart{
 					d3.axisBottom(this.x)
 						.tickValues(Array.from(Array(this.data.length).keys()))
 						.tickFormat(function(d){ return 'Admission ' + (d + 1);})
-				);
+				)
+				.select('.domain').remove();
+
+			this.g.selectAll('.x-axis .tick line').remove();
 		}
 		else{
 
@@ -708,7 +764,11 @@ class Chart{
 				.call(
 					d3.axisBottom(this.x)
               		.tickFormat(d3.timeFormat("%m/%d/%Y"))
-				);
+              		.ticks(6)
+				)
+				.select('.domain').remove();
+
+			this.g.selectAll('.x-axis .tick line').remove();
 		}
 
 		var lineData = [];
@@ -724,6 +784,10 @@ class Chart{
 
 
 		var path = this.g.select('path.line')
+			.datum(this.data)
+			.attr('d', this.line);
+
+		var path = this.g.select('path.linearea')
 			.datum(lineData)
 			.attr('d', this.line);
 
@@ -744,11 +808,11 @@ class Chart{
 			.data(this.data)
 			.attr('cx', function(d, i){ return self.x(self.getX(d, i)); })
 			.attr('cy', function(d, i){ return self.y(self.getY(d, i)); })
-			.attr('r', 5)
+			.attr('r', 7)
 			.attr('fill', 'white')
 			//.attr('stroke', 'url(#temperature-gradient)')
-			.attr('stroke', 'grey')
-			.attr('stroke-width', 1.5);
+			.attr('stroke', '#ca0000')
+			.attr('stroke-width', 3);
 
 		this.g.selectAll('circle.line-corners')
 			.data(this.data)

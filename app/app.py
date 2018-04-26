@@ -121,14 +121,14 @@ def patient(patientID):
       diagnoses = [codeDict["code"] for codeDict in icdCodes[encounterId]]
       encounterData.append(diagnoses)
 
-    rounding_factor = 10000.0
+    #rounding_factor = 10000.0
     
     preds, contributions = model.predict_icd9(encounterData)
-    prediction = round(preds * rounding_factor) / rounding_factor if preds is not None else 'N/A'
+    prediction = round(preds * 100) if preds is not None else 'N/A'
 
     
     incremental_preds, incremental_contributions = model.incremental_predict_icd9(encounterData)
-    incrementalPredictions = [pred for pred in list(map(lambda x: None if x is None else round(x * rounding_factor) / rounding_factor, incremental_preds)) if pred is not None]
+    incrementalPredictions = [pred for pred in list(map(lambda x: None if x is None else round(x * 100), incremental_preds)) if pred is not None]
                 
   except Exception as e:
     errors.append("error")

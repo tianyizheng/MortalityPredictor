@@ -10,11 +10,18 @@
     </head>
     <body>
         <div id="content">
-            <h1>Patient: {{ patientID }}</h1>
-            <h2>Mortality Risk: {{ mortalityPrediction }}</h2>
             <div id="chart-container">
-                <div class="svg-container">
-                    <svg id="mortality-chart" width="800" height="500"></svg>
+                <div>
+                    <div class="svg-container">
+                        <div id="header-container">
+                            <div class="chartTitle">Mortality Risk Score</div>
+                            <div class="axisButtons">
+                                <button class="dateAxisButton axisButton active">Date View</button>
+                                <button class="admissionAxisButton axisButton">Admission View</button>
+                            </div>
+                        </div>
+                        <svg id="mortality-chart" width="800" height="500"></svg>
+                    </div>
                     <div id="observation-info"></div>
                 </div>
                 <div id="mortality-info"></div>
@@ -66,8 +73,9 @@
             var svg = $('#mortality-chart');
             var infoContainer = $('#mortality-info')
             var observationContainer = $('#observation-info')
+            var axisControlContainer = $('#header-container .axisButtons')
             
-            var chart = new Chart(encounterData, codes, svg, infoContainer, observationContainer);
+            var chart = new Chart(encounterData, codes, svg, infoContainer, observationContainer, axisControlContainer);
 
 
             socket.on('get observations', function(message){

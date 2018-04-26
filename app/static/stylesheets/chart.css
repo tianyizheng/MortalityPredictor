@@ -1,55 +1,166 @@
+body {
+	background-color: #f7fbff !important;
+}
+
 #content {
-	max-width: 1300px;
+	max-width: 1200px;
 	margin-left: auto;
 	margin-right: auto;
+	padding-top: 60px;
 }
 
 #chart-container{
-	width: 1300px;
+	width: 1200px;
 	display: flex;
 	margin-right: 10px;
 }
 
-#mortality-chart {
-	
+.svg-container {
 	box-sizing: border-box;
 	box-shadow: 2px 2px 7px #848484;
+	background: white;
+}
+
+.svg-container .chartTitle {
+	display: inline-block;
+	padding-left: 50px;
+	padding-top: 20px;
+	font-size: 1.7em;
+	font-weight: bold;
+}
+
+.svg-container .axisButtons {
+	float: right;
+	margin-top: 20px;
+	margin-right: 50px;
+	background: #e0f0f5;
+	border-radius: 25px;
+}
+
+.svg-container .axisButtons .axisButton{
+	border: 0;
+	background: none;
+	padding: 10px;
+	width: 140px;
+	border-radius: 25px;
+	font-weight: bold;
+}
+
+.svg-container .axisButtons .axisButton.active {
+	background: rgb(33,117,177);
+	background: linear-gradient(0deg, rgba(33,117,177,1) 0%, rgba(59,154,226,1) 100%);
+	color: white;
+}
+
+#mortality-chart {
+	box-sizing: border-box;
 }
 #mortality-info {
-	padding: 10px;
+	padding: 0px;
 	box-sizing: border-box;
 	flex: 1;
 	margin-left: 24px;
 	box-shadow: 2px 2px 7px #848484;
+	background: white;
 }
 
 .line {
 	fill: none;
-	stroke: url(#line-gradient);
+	stroke: #ca0000;
+	stroke-width: 3px;
+}
+
+.linearea {
+	stroke: none;
 	fill: url(#temperature-gradient);
-	stroke-width: 1.5px;
+	stroke-width: 3.5px;
+}
+
+.contribution-arrow {
+	stroke-width: 3.5px;
+	stroke: black;
+}
+
+.arrow-head {
+	fill: black;
+}
+
+.admissionTitle {
+	padding-top: 10px !important;
+}
+
+.admissionTitle,
+.mortalityTitle {
+	font-size: 1.3em;
+	font-weight: bold;
+	padding: 0 10px 0 10px;
+}
+
+.dateRange {
+	font-size: 1.3em;
+	padding: 0 10px 10px 10px;
+}
+
+.detailContainer {
+	padding: 10px;
+	border-bottom: 1px solid #c7c7c7;
+}
+
+.detailContainer.last {
+	border-bottom: 0;
+}
+
+.mortalityScore {
+	font-size: 4em;
+	color: #D0021B;
+	line-height: 60px;
+	padding: 0 10px 0 10px;
+}
+
+
+.contributionContainer tr.contribution td{
+	border: 3px solid transparent;
+	user-select: none;
+	cursor: pointer;
+}
+
+.contributionContainer tr.contribution.prevActive td{
+	border-bottom: 3px solid black;
+}
+
+.contributionContainer tr.contribution.active td.name{
+	border: 3px solid black;
+	border-right: 0;
+}
+
+.contributionContainer tr.contribution.active td.score{
+	border: 3px solid black;
+	border-left: 0;
 }
 
 .contributionContainer tr.contribution td{
-	padding: 4px;
-	border: 1px solid #676767;
-}
-
-
-.contributionContainer tr.contribution td.code{
-	min-width: 70px;
-	padding-left: 10px;
-	padding-right: 5px;
+	padding: 10px 0px 10px 0px;
+	/*border: 1px solid #676767;*/
 }
 
 .contributionContainer tr.contribution td.score{
-	padding-left: 5px;
-	padding-right: 5px;
+	padding-left: 10px;
+	padding-right: 10px;
 	text-align: center;
+}
+
+.contributionContainer tr.contribution td.score .scoreBubble{
+	display: inline-block;
+	border-radius: 25px;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    width: 100px;
+    display: inline-block;
 }
 
 .contributionContainer tr.contribution td.name{
 	padding-right: 0;
+	padding-left: 10px;
 }
 
 .contributionTable {
@@ -57,16 +168,22 @@
 }
 
 .contributionTable tr:first-child {
-	background: rgb(215,215,215);
-	background: linear-gradient(0deg, rgba(215,215,215,1) 0%, rgba(255,255,255,1) 100%);
+	/*background: rgb(215,215,215);
+	background: linear-gradient(0deg, rgba(215,215,215,1) 0%, rgba(255,255,255,1) 100%);*/
+	font-size: 1.3em;
+	font-weight: bold;
 }
 
-.tick text {
-	font-size: 1.2em;
+.contributionButtonContainer {
+	text-align: center;
+}
+
+.y-axis .tick text {
+	font-size: 1.5em;
 }
 
 .x-axis .tick text {
-	font-size: 1em;
+	font-size: 1.2em;
 }
 
 .grid line{
@@ -112,6 +229,7 @@
 	margin-top: 18px;
 	min-height: 172px;
 	padding: 10px;
+	background: white;
 }
 
 .observationTable td.code {
