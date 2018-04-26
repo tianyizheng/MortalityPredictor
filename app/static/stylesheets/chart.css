@@ -52,6 +52,11 @@ body {
 	color: white;
 }
 
+
+.svg-container .axisButtons .axisButton:focus{
+	outline: 0;
+}
+
 #mortality-chart {
 	box-sizing: border-box;
 }
@@ -214,14 +219,18 @@ body {
 }
 
 .observationTable tr:first-child {
-	background: rgb(215,215,215);
-	background: linear-gradient(0deg, rgba(215,215,215,1) 0%, rgba(255,255,255,1) 100%);
+	/*background: rgb(215,215,215);
+	background: linear-gradient(0deg, rgba(215,215,215,1) 0%, rgba(255,255,255,1) 100%);*/
+	font-size: 1.3em;
+	font-weight: bold;
 }
 
 .observationTable td {
 	padding-left: 5px;
 	padding-right: 5px;
-	border: 1px solid #676767;
+	padding-top: 4px;
+	padding-bottom: 4px;
+	border-bottom: 1px solid #d6d6d6;
 }
 
 #observation-info {

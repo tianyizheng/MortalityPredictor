@@ -737,7 +737,7 @@ class Chart{
 				.call(
 					d3.axisBottom(this.x)
 						.tickValues(Array.from(Array(this.data.length).keys()))
-						.tickFormat(function(d){ return 'Admission ' + (d + 1);})
+						.tickFormat(function(d){ return 'Adm ' + (d + 1);})
 				)
 				.select('.domain').remove();
 
