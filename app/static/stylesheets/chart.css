@@ -75,16 +75,21 @@
 }
 
 .contributionButton {
-	background: #8fd8ff;
-	border: 1px solid #676767;
-	border-radius: 7px;
-	box-shadow: 2px 2px 2px #848484;
-	margin: 7px;
+    background: #ffffff;
+    border: 1px solid #4A90E2;
+    color: #4A90E2;
+    border-radius: 3px;
+    margin: 7px;
+    width: 160px;
+    height: 45px;
+    font-size: 1.2em;
+    font-weight: bold;
 }
 
 
 .contributionButton:disabled {
 	background: #d4d4d4;
+	color: grey;
 }
 
 .observationTable {
