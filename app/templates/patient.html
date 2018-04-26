@@ -1,95 +1,84 @@
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <script src="https://d3js.org/d3.v5.min.js"></script>
-        <link rel="stylesheet" href="/static/stylesheets/chart.css">
-
-        <title>Patient Code</title>
-        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
-            integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-    </head>
-    <body>
-        <div id="content">
-            <div id="chart-container">
-                <div>
-                    <div class="svg-container">
-                        <div id="header-container">
-                            <div class="chartTitle">{{ patientData.name }}</div>
-                            <div class="axisButtons">
-                                <button class="dateAxisButton axisButton active">Date View</button>
-                                <button class="admissionAxisButton axisButton">Admission View</button>
-                            </div>
-                        </div>
-                        <svg id="mortality-chart" width="800" height="500"></svg>
+{% extends "base.html" %}
+{% block title %}Mortality Risk Analysis{% endblock %}
+{% block head %}
+    {{ super() }}
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <link rel="stylesheet" href="/static/stylesheets/chart.css">
+{% endblock %}
+{% block content %}
+    <div id="chart-container">
+        <div>
+            <div class="svg-container">
+                <div id="header-container">
+                    <div class="chartTitle">{{ patientData.name }}</div>
+                    <div class="axisButtons">
+                        <button class="dateAxisButton axisButton active">Date View</button>
+                        <button class="admissionAxisButton axisButton">Admission View</button>
                     </div>
-                    <div id="observation-info"></div>
                 </div>
-                <div id="mortality-info"></div>
+                <svg id="mortality-chart" width="800" height="500"></svg>
             </div>
-            <br>
-            {% for error in errors %}
-                <h4>{{ error }}</h4>
-            {% endfor %}
-            <br>
-            
-            
+            <div id="observation-info"></div>
         </div>
-        <div id="tooltip"></div>
-        <script src="//code.jquery.com/jquery-2.2.1.min.js"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
-        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous">
-        </script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.js"></script>
-        <script src="/static/javascripts/Chart.js"></script>
-        <script type="text/javascript">
+        <div id="mortality-info"></div>
+    </div>
+    <br>
+    {% for error in errors %}
+        <h4>{{ error }}</h4>
+    {% endfor %}
+    <br>
+{% endblock %}
+{% block pageScript %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.1.0/socket.io.js"></script>
+    <script src="/static/javascripts/Chart.js"></script>
+    <script type="text/javascript">
 
-            var socket = io();
+        var socket = io();
 
-            var codes = {
-                {% for key in codeDict %}
-                    '{{ key }}': [
-                    {% for data in codeDict[key] %}
-                        {
-                            'code': '{{ data["code"] }}',
-                            'name': '{{ data["name"] }}',
-                        },
-                    {% endfor %} ],
-                {% endfor %}
-            };
-
-            var encounterData = [
-                {% for encounter in encounters %}
+        var codes = {
+            {% for key in codeDict %}
+                '{{ key }}': [
+                {% for data in codeDict[key] %}
                     {
-                        'ID': {{ encounter["id"] }}, 
-                        'startDate': new Date('{{ encounter["startDate"] }}'),
-                        'endDate': new Date('{{ encounter["endDate"] }}'),
-                        'prediction': {{ incrementalPredictions[loop.index - 1] }},
-                        'idx': {{ loop.index - 1}}, 
-                        'contributions': {{ incrementalContributions[loop.index - 1] }}
+                        'code': '{{ data["code"] }}',
+                        'name': '{{ data["name"] }}',
                     },
-                {% endfor %}
-            ];
+                {% endfor %} ],
+            {% endfor %}
+        };
 
-            var svg = $('#mortality-chart');
-            var infoContainer = $('#mortality-info')
-            var observationContainer = $('#observation-info')
-            var axisControlContainer = $('#header-container .axisButtons')
-            
-            var chart = new Chart(encounterData, codes, svg, infoContainer, observationContainer, axisControlContainer);
+        var encounterData = [
+            {% for encounter in encounters %}
+                {
+                    'ID': {{ encounter["id"] }}, 
+                    'startDate': new Date('{{ encounter["startDate"] }}'),
+                    'endDate': new Date('{{ encounter["endDate"] }}'),
+                    'prediction': {{ incrementalPredictions[loop.index - 1] }},
+                    'idx': {{ loop.index - 1}}, 
+                    'contributions': {{ incrementalContributions[loop.index - 1] }}
+                },
+            {% endfor %}
+        ];
 
-
-            socket.on('get observations', function(message){
-                chart.setObservationData(message.observationData);
-            });
-
-
-            $(document).ready(function(){
-
-                socket.emit('get observations', {patientId: {{ patientID }} });
-
-            });
-            
+        var svg = $('#mortality-chart');
+        var infoContainer = $('#mortality-info')
+        var observationContainer = $('#observation-info')
+        var axisControlContainer = $('#header-container .axisButtons')
         
-        </script>
-    </body>
-</html>
+        var chart = new Chart(encounterData, codes, svg, infoContainer, observationContainer, axisControlContainer);
+
+
+        socket.on('get observations', function(message){
+            chart.setObservationData(message.observationData);
+        });
+
+
+        $(document).ready(function(){
+
+            socket.emit('get observations', {patientId: {{ patientID }} });
+
+        });
+        
+    
+    </script>
+{% endblock %}
