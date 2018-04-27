@@ -50,21 +50,8 @@ def set_response_headers(response):
 
 @app.route('/', methods=['GET'])
 def index():
-  ''' index page. links to chart and chart2 '''
-
-  errors = []
-  deaths = {}
-
-  try:
-
-    deaths = Death.query.limit(10).all()
-
-  except:
-
-    errors.append(
-      "Not connected to database")
-
-  return render_template('index.html',errors = errors, deaths=deaths)
+  ''' index page. search for patients '''
+  return render_template('search.html')
 
 @app.route('/chart', methods=['GET', 'POST'])
 def chart():
@@ -159,7 +146,11 @@ def handle_message(message):
     name = 'N/A'
     if len(patient.name) > 0:
       name = ' '.join(patient.name[0].given) + ' ' + ' '.join(patient.name[0].family)
+      name = ' '.join(map(lambda x: x.capitalize(), name.lower().split()))
     d['name'] = name
+
+    d['gender'] = patient.gender
+    d['ID'] = patient.id
 
     data.append(d)
 
