@@ -163,6 +163,14 @@ class Chart{
 			.attr('stroke-width', 3.5)
 			.attr('r', 15)
 
+
+		this.g2.append('circle')
+			.attr('class', 'selected-circle')
+			.attr('fill', 'none')
+			.attr('stroke', 'none')
+			.attr('stroke-width', 3.5)
+			.attr('r', 3)
+
 		this.g.append('circle')
 			.attr('class', 'highlight-circle')
 			.attr('fill', 'none')
@@ -680,6 +688,26 @@ class Chart{
 		}
 
 		this.infoContainer.html(html);
+
+		this.drawSelectedIndicator();
+
+	}
+
+	drawSelectedIndicator(){
+		var self = this;
+		if(this.infoData === null){
+			this.g2.select('circle.selected-circle')
+				.attr('fill', 'none')
+				.attr('stroke', 'none')
+		}
+		else{
+			this.g2.selectAll('circle.selected-circle')
+				.data([this.infoData])
+				.attr('fill', '#ca0000')
+				.attr('stroke', 'none')
+				.attr('cx', function(d) { return self.x(self.getX(d.d, d.index)); })
+				.attr('cy', function(d) { return self.y(self.getY(d.d, d.index)); })
+		}
 	}
 
 	drawObservationInfo(){
@@ -828,6 +856,9 @@ class Chart{
 		this.g.selectAll('circle.line-corners')
 			.data(this.data)
 		.exit().remove();
+
+
+		this.drawSelectedIndicator();
 
 
 	}
