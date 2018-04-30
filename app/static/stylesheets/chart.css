@@ -10,9 +10,13 @@
 	background: white;
 }
 
+.patientTitle {
+	padding-left: 19px;
+}
+
 .svg-container .chartTitle {
 	display: inline-block;
-	padding-left: 50px;
+	padding-left: 19px;
 	padding-top: 20px;
 	font-size: 1.7em;
 	font-weight: bold;
