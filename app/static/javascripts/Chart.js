@@ -75,6 +75,10 @@ class Chart{
 		this.line = d3.line()
 			.x(function(d, i) { return self.x(self.getX(d, i)); })
 			.y(function(d, i) { return self.y(self.getY(d, i)); });
+
+		this.basicline = d3.line()
+			.x(function(d, i) { return self.x(d.x); })
+			.y(function(d, i) { return self.y(d.y); });
 				
 		this.svg.append('linearGradient')
 			.attr('id', 'temperature-gradient')
@@ -154,6 +158,13 @@ class Chart{
 			.attr('stroke-linejoin', 'round')
 			.attr('stroke-linecap', 'round')
 			.attr('d', this.line);
+
+		this.g.append('path')
+			.attr('class', 'admission-region')
+			.attr('fill', '#c90000')
+			.attr('opacity', 0)
+			.attr('stroke-linejoin', 'round')
+			.attr('stroke-linecap', 'round');
 
 
 		this.g.append('circle')
@@ -699,6 +710,10 @@ class Chart{
 			this.g2.select('circle.selected-circle')
 				.attr('fill', 'none')
 				.attr('stroke', 'none')
+
+
+			this.g.select('path.admission-region')
+				.attr('opacity', 0);
 		}
 		else{
 			this.g2.selectAll('circle.selected-circle')
@@ -707,8 +722,58 @@ class Chart{
 				.attr('stroke', 'none')
 				.attr('cx', function(d) { return self.x(self.getX(d.d, d.index)); })
 				.attr('cy', function(d) { return self.y(self.getY(d.d, d.index)); })
+
+
+			if(this.axis_mode === 1){
+
+				// find y of end point
+				var current = this.data[parseInt(this.infoData.index)];
+				var next = this.data[parseInt(this.infoData.index) + 1];
+
+				var currentStart = +current.startDate;
+				var end = +current.endDate;
+				var nextStart = next !== undefined ? +next.startDate : end;
+
+				var currentY = current.prediction;
+				var nextY = next !== undefined ? next.prediction : currentY;
+
+				var t = (end - currentStart) / (nextStart - currentStart);
+
+				var midY = (nextY - currentY) * t + currentY;
+
+				var d = [
+					{
+						x: currentStart,
+						y: 0,
+					},
+					{
+						x: currentStart,
+						y: currentY,
+					},
+					{
+						x: end,
+						y: midY,
+					},
+					{
+						x: end,
+						y: 0,
+					},
+				];
+
+				this.g.select('path.admission-region')
+					.datum(d)
+					.attr('opacity', 0.5)
+					//.attr('fill', 'red')
+					.attr('d', this.basicline(d));
+			}
+			else{
+				this.g.select('path.admission-region')
+					.attr('opacity', 0);
+			}
+
 		}
 	}
+
 
 	drawObservationInfo(){
 		var self = this;
