@@ -115,15 +115,15 @@ class Chart{
 		this.g.append('g')
 			.attr('class', 'y-axis')
 			.call(d3.axisLeft(this.y).ticks(5).tickSize(5))
-		.append('text')
-			.attr('fill', '#000')
-			//.attr('transform', 'rotate(-90)')
-			.attr('x', 5)
-			.attr('y', 0)
-			.attr('dy', '1em')
-			.attr('font-size', '2em')
-			.attr('text-anchor', 'start')
-			.text('Mortality Risk Score');
+		//.append('text')
+		//	.attr('fill', '#000')
+		//	//.attr('transform', 'rotate(-90)')
+		//	.attr('x', 5)
+		//	.attr('y', 0)
+		//	.attr('dy', '1em')
+		//	.attr('font-size', '2em')
+		//	.attr('text-anchor', 'start')
+		//	.text('Mortality Risk Score');
 
 			this.g.select('.y-axis .domain').remove();
 

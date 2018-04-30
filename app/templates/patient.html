@@ -6,11 +6,12 @@
     <link rel="stylesheet" href="/static/stylesheets/chart.css">
 {% endblock %}
 {% block content %}
+    <h1>{{ patientData.name }}</h1>
     <div id="chart-container">
         <div>
             <div class="svg-container">
                 <div id="header-container">
-                    <div class="chartTitle">{{ patientData.name }}</div>
+                    <div class="chartTitle">Mortality Risk Score</div>
                     <div class="axisButtons">
                         <button class="dateAxisButton axisButton active">Date View</button>
                         <button class="admissionAxisButton axisButton">Admission View</button>
