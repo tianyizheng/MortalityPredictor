@@ -318,6 +318,17 @@ def getPatientDataAndCodes(patientID):
   encounters = [value for key, value in sorted(encounterDict.items(),
                key=lambda x: x[1]["startDate"])]
 
+  # Remove duplicate codes
+  for encounterId in codeDict:
+    encounterData = codeDict[encounterId]
+    uniqueCodes = set()
+    for i in reversed(range(len(encounterData))):
+      codeData = encounterData[i]
+      if codeData['code'] in uniqueCodes:
+        removed = encounterData.pop(i)
+      else:
+        uniqueCodes.add(codeData['code'])
+
   return patientData, encounters, codeDict
 
 
